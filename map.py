@@ -209,18 +209,18 @@ pixels = [
 ".IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII...............................WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE......",
 ".IIIIIIIIIIIIIIIIIIIIIIIIII.III...................................WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE......",
 "..I.IIIIIIIIIIIIIIIIIIIIIIIIII....................................WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE.EEE......",
-"....IIIIIIIIIIIIIIIIIIIIIII......................................WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWEEEEEEEEEEEEEEEEEEEEEEEEEEEEE122211EEEEEEEEEE..........",
-"......IIIIII.IIIIIIIIIIIIII......................................WWWWWWW...WWWWWWWWWWWWWWWWWWWWWEEEEEEEEEEEEEEEEEEEEEEEEEEEE12333321EEEEEEEEE..........",
-".....IIIII.IIIIIIIIIIIIII.........................................WWWWWW......WWWWWWWWWWWWWWWWWWEEEEEEEEEEEEEEEEEEEEEEEEEEE1244554321EEEEEEEE..........",
-"....IIIIIIIIIIIIIIIIIII............................................WW.......WWWWWWWWWWWWWWWWWWWWWEEEEEEEEEEEEEEEEEEEEEEEEEE2356665431EEEEEEEE..........",
-"........IIIIIIIIIIII........................................................WWWWW..WWWWWWWWWWWWWEEEEEEEEEEEEEEEEEEEEEEEEEE12457876532EEEEEEEE..........",
-".........IIIIIIII..................................................................WWWWWWWWW....EEEEEEEEEEEEEEEEEEEEEEEEEE13467987542EEEEEE............",
-"........II....I....................................................................WWWWWWWW...EEEEEEEEEEEEEEEEEEEEEEEEEEEE13467887542EEEEE.............",
-".....................................................................................WWWWWW...EEEEEEEEEEEEEEEEEEEEEEEEEEEE12456776532EEEEEEEE..........",
-"......................................................................................WWWW...EEEEEEEEEEEEEEEEEEEEEEEEEEEEEE2345655421EEEEEEEE.EEEEE....",
-"............................................................................................EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE123444332EEEEEEEEEEEEEEE....",
-"............................................................................................EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE1223321EEEEEEEEEEEEEEEE....",
-".................................................................................EEEEE......EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE1111EEEEEEEEEEEEEEEEE....",
+"....IIIIIIIIIIIIIIIIIIIIIII......................................WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE..........",
+"......IIIIII.IIIIIIIIIIIIII......................................WWWWWWW...WWWWWWWWWWWWWWWWWWWWWEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE..........",
+".....IIIII.IIIIIIIIIIIIII.........................................WWWWWW......WWWWWWWWWWWWWWWWWWEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE..........",
+"....IIIIIIIIIIIIIIIIIII............................................WW.......WWWWWWWWWWWWWWWWWWWWWEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE..........",
+"........IIIIIIIIIIII........................................................WWWWW..WWWWWWWWWWWWWEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE..........",
+".........IIIIIIII..................................................................WWWWWWWWW....EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE............",
+"........II....I....................................................................WWWWWWWW...EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE.............",
+".....................................................................................WWWWWW...EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE..........",
+"......................................................................................WWWW...EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE.EEEEE....",
+"............................................................................................EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE....",
+"............................................................................................EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE....",
+".................................................................................EEEEE......EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE....",
 ".............................................................................EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE....",
 ".............................................................................EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE....",
 ".............................................................................EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE.....",
@@ -342,11 +342,22 @@ for out_r, row in enumerate(range(r0, r1)):
         char_grid[out_r][out_c] = ch
 cropped_pixels = ["".join(row) for row in char_grid]
 
+CELL = 3  # pixels per grid cell, smaller = smaller page footprint
+
 html = """<!DOCTYPE html>
-<html><body>
+<html>
+<head>
+<style>
+  body { margin: 0; min-height: 100vh; display: flex; justify-content: center;
+         align-items: center; background: #f7f5f0; }
+  canvas { max-width: 92vw; max-height: 92vh; width: auto; height: auto; display: block; }
+</style>
+</head>
+<body>
 <canvas id="c" width="%d" height="%d"></canvas>
 <script>
 const pixels = %s;
+const CELL = %d;
 const LAND = "#a6a6a6";
 const heat = [null,"#f8d94e","#f9c33f","#f9aa33","#f68f2a",
   "#ef7222","#e2551c","#cf3a16","#b52410","#8f0d06"];
@@ -356,9 +367,9 @@ for (let row = 0; row < pixels.length; row++)
     const ch = pixels[row][col];
     if (ch === ".") continue;
     ctx.fillStyle = (ch >= "1" && ch <= "9") ? heat[Number(ch)] : LAND;
-    ctx.fillRect(col * 5, row * 5, 4.2, 4.2);
+    ctx.fillRect(col * CELL, row * CELL, CELL - 0.6, CELL - 0.6);
   }
-</script></body></html>""" % (width * 5, height * 5, str(cropped_pixels))
+</script></body></html>""" % (width * CELL, height * CELL, str(cropped_pixels), CELL)
 
 with open("map.html", "w") as f:
     f.write(html)
