@@ -1,287 +1,87 @@
-# British Isles pixel map — Python version, works in Google Colab.
-# Paste this whole thing into one cell and run it.
+# British Isles pixel map — generated from real geographic boundaries
+# (Historic County Borders Project for the UK, GADM/Tailte Éireann-derived
+# data for Ireland), not hand-drawn. Paste this whole thing into one cell
+# and run it. Takes a few minutes: it's rasterizing ~120 real polygons at
+# high resolution.
+#
+# Needs historic_counties.geojson and ireland_counties.geojson sitting
+# next to this script.
 
+import json
 from collections import deque
 
 import numpy as np
 import matplotlib.pyplot as plt
-
-# THE PIXELS. One character per pixel.
-#   .    =  sea (left blank)
-#   1-9  =  London heat: 9 is the very center, 1 the outer edge
-#   any letter  =  ordinary land
-
-pixels = [
-".......................................................................................................................................................",
-".......................................................................................................................................................",
-".......................................................................................................................................................",
-".......................................................................................................................................................",
-".......................................................................................................................................................",
-".......................................................................................................................................................",
-".......................................................................................................................................................",
-".......................................................................................................................................................",
-".......................................................................................................................................................",
-".......................................................................................................................................................",
-".......................................................................................................................................................",
-".......................................................................................................................................................",
-".......................................................................................................................................................",
-".......................................................................................................................................................",
-".......................................................................................................................................................",
-".......................................................................................................................................................",
-".......................................................................................................................................................",
-".......................................................................................................................................................",
-".......................................................................................................................................................",
-".......................................................................................................................................................",
-".......................................................................................................................................................",
-".......................................................................................................................................................",
-".......................................................................................................................................................",
-".......................................................................................................................................................",
-".......................................................................................................................................................",
-".......................................................................................................................................................",
-".......................................................................................................................................................",
-".......................................................................................................................................................",
-".......................................................................................................................................................",
-".......................................................................................................................................................",
-".......................................................................................................................................................",
-".......................................................................................................................................................",
-"............................................................................................S..........................................................",
-"...........................................................................................SSS.....S...................................................",
-"............................................................................................SSS..SSS...................................................",
-"...............................................................................................SSS.....................................................",
-"...........................................................................................SS.SS.......................................................",
-"........................................................................................SSSSS..S.S.....................................................",
-"........................................................................................SSSSS...SSS....................................................",
-"........................................................................................SSSS...........................................................",
-"........................................................................................SSSSSSS........................................................",
-"........................................................................................SSSSSSSS.......................................................",
-".......................................................................................SSS...SSS.......................................................",
-".......................................................................................SSS...S.........................................................",
-"........................................................................................SSS.SS.........................................................",
-".........................................................................................S..SS.........................................................",
-".......................................................................................................................................................",
-".......................................................................................SSS.............................................................",
-"....................................................................SS..............SSSSSSSS...........................................................",
-"...................................................................SSSSS.SS...SSSSSSSSSSSSSS...........................................................",
-"..................................................................SSSSSSSSSSSSSSSSSSSSSSSSS............................................................",
-"..................................................................SSSSSSSSSSSSSSSSSSSSSSSSSS.........................................................",
-"..................................................................SSSSSSSSSSSSSSSSSSSSSSSSSS.........................................................",
-"..................................................................SSSSSSSSSSSSSSSSSSSSSSSSSS.........................................................",
-"..............................................SSSSSSSS...........SSSSSSSSSSSSSSSSSSSSSSSSSS............................................................",
-".............................................SSSSSSSS.............SSSSSSSSSSSSSSSSSSSSSSSS.............................................................",
-"............................................SSSSSSSS.S.........SSSSSSSSSSSSSSSSSSSSSSSSS...............................................................",
-"..........................................SSSSSSSSSSSS.........SSSSSSSSSSSSSSSSSSSSSSSS................................................................",
-"..........................................SSSSSSSSS.............SSSSSSSSSSSSSSSSSSSSSS.................................................................",
-".........................................SSSSSSSSSS.............SSSSSSSSSSSSSSSSSSSSS..................................................................",
-"..........................................SSSSSSSSS...........SSSSSSSSSSSSSSSSSSSSSS...................................................................",
-"..........................................SSSSSSSSS............SSSSSSSSSSSSSSSSSSSS....................................................................",
-"..........................................SSSSSSSS..............SSSSSSSSSSSSSSSSSS.....................................................................",
-"............................................SSSSSS..........S..S.SSSSSSSSSSSSSSSS......................................................................",
-"..........................................SSSSSS..........SSSSSSSSSSSSSSSSSSSSSS.......................................................................",
-".......................S.................SSSSSS...........SSSSSSSSSSSSSSSSSSSSSSS.S....................................................................",
-"..........................................SSS.............SSSSSSSSSSSSSSSSSSSSSSSSS....................................................................",
-"...........................................SS.............SSSSSSSSSSSSSSSSSSSSSSSS.....................................................................",
-"........................................S..........S......SSSSSSSSSSSSSSSSSSSSSSS.....SSSSS..SSSSS...S.SS..............................................",
-".....................................SSSSSS.......SSS.....SSSSSSSSSSSSSSSSSSSSSS...SSSSSSSSSSSSSSSSSSSSSSSS............................................",
-"....................................SSSSSS.....S..SSSS....SSSSSSSSSSSSSSSSSSSSS.S.SSSSSSSSSSSSSSSSSSSSSSSSS............................................",
-".....................................SSSSS.....SS.SSSS.S.SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS............................................",
-".......................................SSS....S.SSSSSS.S.SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS...........................................",
-"......................................SSS.....SSSSSSSS.S.SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS...........................................",
-"......................................SSS.....SSSSSSSSSS.SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS............................................",
-"......................................SS......SSSSSSSSSS.SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS............................................",
-"......................................SSS.......S.SSSSSS...SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS.............................................",
-"......................................SSS........SSSSSSSS.SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS..............................................",
-".....................................SSS..........SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS..............................................",
-"......................................SS...........SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS...............................................",
-"......................................SS..............S.SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS...............................................",
-"......................................SSS..............SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS...............................................",
-".....................................S..........SSSS...SS.SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS...............................................",
-".....................................SS...........SSS....SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS................................................",
-"....................................SS............SSS....SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS................................................",
-".........................................................SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS................................................",
-"..........................................................SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS.................................................",
-".........................................................SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS.................................................",
-".......................................................SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS..................................................",
-"....................................................SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS...................................................",
-".................................................S...SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS...................................................",
-"................................................SS...SSSSSSSSSS.SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS....................................................",
-"...............................................SS..SSSSSSSSSSS.SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS....................................................",
-".............................................SS....SSSSS.SSSS.SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS.....................................................",
-"...........................................SSS......SSSSSSSS..SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS......................................................",
-"...........................................SS........SSSSSSS..SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS........................................................",
-".....................................................SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS........................................................",
-".....................................................SSSSSS..SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS........................................................",
-"...................................................SSSSSSS..SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS......................................................",
-"...................................................SSS......SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS.....................................................",
-"...........................................................SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS......................................................",
-"..........................................................SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS.S........................................................",
-".....................................................S....SS.SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS...........................................................",
-"....................................................SS...SS.SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS............................................................",
-"....................................................SS..SSS.SSSSSSSSSSSSSSSSSSSSSSSSSSSSSS....SSSS.....................................................",
-".......................................................SSS.SSSSSSSSSSSSSSSSSSSSSSSSSSSSSS....SSSSSSS...................................................",
-".......................................................SSS.SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS..................................................",
-"....................................................SSSSS..SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS...............................................",
-"..................................................SSSSSSS..SSSSSSSSS.SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS...............................................",
-".................................................SSSSSSS...SSSSS..SS.SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS..............................................",
-".................................................SSSSSS.....SSSS..SS.SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSEE.............................................",
-".................................................SSSSSSS....SSS.SS...SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSEEE.............................................",
-".................................................S..SSS....SSS.SSS...SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSEEEEE............................................",
-"...................................................SSS.....SSS.SSSS...SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSEEEEEEEE..........................................",
-"...................................................SS......SSS.SSSS....SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSEEEEEEEEE.........................................",
-"...........................................................SSS.SSSS.....SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSEEEEEEEE.........................................",
-"...........................................................SSS.SSSS.....SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSEEEEEEEE.........................................",
-"..........................................................SSS...SSS....SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSEEEEEEEE.........................................",
-"......................................I...................SSSS........SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSEEEEEEEEE.........................................",
-"......................................III.................SSSS........SSSSSSSSSSSSSSSSSSSSSSSSSSSSSEEEEEEEEEEE.........................................",
-".....................................IIIII..........NN....SSS........SSSSSSSSSSSSSSSSSSSSSSSSSSSSSEEEEEEEEEEEEE........................................",
-".................................IIIIIIIIIII.....N...................SSSSSSSSSSSSSSSSSSSSSSSSSSSSEEEEEEEEEEEEEE........................................",
-"..............................IIIIIIIIIIIIII...NNNNNNNN..............SSSSSSSSSSSSSSSSSSSSSSSSSSSSEEEEEEEEEEEEEE........................................",
-"...........................IIIIIIIIIIIIIII.NNNNNNNNNNNN.............SSSSSSSSSSSSSSSSSSSSSSSSSSSSEEEEEEEEEEEEEEE........................................",
-"...........................IIIIIIIIIIIIII..NNNNNNNNNNNN............SSSSSSSSSSSSSSSSSSSSSSSSSSSEEEEEEEEEEEEEEEEE........................................",
-"...........................IIIIIIIIIIIIIN..NNNNNNNNNNNNN...........SSSSSSSSSSSSSSSSSSSSSSSSSSSEEEEEEEEEEEEEEEEEE.......................................",
-"..........................IIIIIIIIIIIIINNNNNNNNNNNNNNNNN..........SSSSSSSSSSSSSSSSSSSSSSSSSSEEEEEEEEEEEEEEEEEEEE.......................................",
-"........................IIIIIIIIIIIIIINNNNNNNNNNNNNNNNNNN........SSSSSSSSSSSSSSSSSSSSSSSSSSSEEEEEEEEEEEEEEEEEEEEE......................................",
-".........................IIIIIIIIIIIIINNNNNNNNNNNNNNNNNNN........SSSSSSSSSSSSSSSSSSSSS..EEEEEEEEEEEEEEEEEEEEEEEEE......................................",
-".........................IIIIIIIIIIIIINNNNNNNNNNNNNNNNNNNN.......SSSSSSSSSSSSSSSSSSSSS.EEEEEEEEEEEEEEEEEEEEEEEEEE......................................",
-"........................IIIIIIIIIIIIIINNNNNNNNNNNNNNNNNNNNNN.......SSS.SSSSSSSSSSSSSS....EEEEEEEEEEEEEEEEEEEEEEEEEE......................................",
-"........................IIIIIIIIIIIIIINNNNNNNNNNNNNNNNNNNNNNN.......SS..SSSSS..SSSS.....EEEEEEEEEEEEEEEEEEEEEEEEEEE.....................................",
-"......................IIIIIIIIIIIIIINNNNNNNNNNNNNNNNNNNNNNNN........S....SSS..........EEEEEEEEEEEEEEEEEEEEEEEEEEEE.....................................",
-".....................IIIIIIIIIIINNNNNNNNNNNNNNNNNNNNNNNNNN..........SS....SS..........EEEEEEEEEEEEEEEEEEEEEEEEEEEEE....................................",
-".....................IIIIIIIIIIINNNNNNNNNNNNNNNNNNNNNNNNNNNNNN......SS...............EEEEEEEEEEEEEEEEEEEEEEEEEEEEEE....................................",
-"......................IIIIIIIIIIIINNNNNNNNNNNNNNNNNNNNNNNNNNNN.......................EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE.................................",
-".........................I..IIIIINNNNNNNNNNNNNNNNNNNNNNNNNNNNN.......................EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE...............................",
-"...........................IIINNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN.....................EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE.............................",
-".........................IIIINNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN.NN......................EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE............................",
-"........................IIIIINNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN............M..........EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE............................",
-".......................IIIIIIINNNNNNNNNNNNIINNNNNNNNNNNNNNNNNN...........MMM..........EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE...........................",
-"........II.............IIIIIIIINNNNNNNNNNIIIINNNNNNNNNNNNNNNNN...........MMM...........EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE..........................",
-".....II.IIIIIIII..II...IIIIIIIIINNNNNNNNNIIIINNNNNNNNNNNNNNNN...........MMMMM..........EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE..........................",
-".....IIIIIIIIIII.IIIIIIIIIIIIIIIINNNNNNNNIIIINNNNNNNNNNNNNNN............MMMM............EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE.........................",
-".....IIIIIIIIIIIIIIIIIIIIIIIIIIIIIINNNNNIIIIIINNNNNNNNNNNN.............MMMMM............EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE.........................",
-".....I.IIIIIIIIIIIIIIIIIIIIIIIIIIIIIINNNNIIIIIIIINNNNNNNNN..............MMMM..............EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE.......................",
-"....IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIINNNNINNNNN.............MMMM...............EE...EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE......................",
-".......IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIINIIIIINN..............M.M....................EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE........................",
-"....IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII.......................................EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE........................",
-"...IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII..I.......................................EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE.......................",
-".....IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII.........................................EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE.......................",
-".......II..IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII......................................EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE.......................",
-"...........IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII......................................EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE......................",
-".......IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII......................................EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE.....................",
-".......IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII.......................................EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE.....................",
-".......IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII.......................................EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE....................",
-".......IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII.......................................EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE....................",
-"......IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII.....................................EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE...E...................",
-"....IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII....................................EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE.....................",
-"....IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII....................................EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE....................",
-"....IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII......................................EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE...................",
-"....IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII..................WWWW.............EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE..................",
-"......IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII..................WWWW...........W.EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE..................",
-".......III.IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII.................WWWWWWWWW..WW..WWWW.EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE..................",
-".........IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII.................WWWWWWWWWWWWWWWWWWWEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE.................",
-"..........I.II....IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII..................WWWWWWWWWWWWWWWWWWWWEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE.................",
-".................IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII...................WWWWWWWWWWWWWWWWWWWEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE.................",
-".........II....IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII....................WWWWWWWWWWWWWWWWWWEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE.................",
-"..........I...IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII....................WWWWWWWWWWWWWWWWWWEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE.................",
-"..............IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII....................WWWWWWWWWWWWWWWWWWWEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE..................",
-".............IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII..................WWWWWWWWWWWWWWWWWWWWWEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE.....E.............",
-".............IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII.................WWWWWWWWWWWWWWWWWWWWWWWEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE....EEEEEEEEEE......",
-".............IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII.................WWWWWWWWWWWWWWWWWWWEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE....EEEEEEEEEEEE....",
-".............IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII................WWWW...WWWWWWWWWWWWWEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE..EEEEEEEEEEEEEE...",
-"............IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII.................WWW....WWWWWWWWWWWWWEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE..",
-"............IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII........................WWWWWWWWWWWWWWEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE.",
-"..........IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII.........................WWWWWWWWWWWWWWEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE",
-"..........IIIIIIII.IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII..........................WWWWWWWWWWWWWEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE",
-".........IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII.........................WWWWWWWWWWWWWWEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE",
-".......IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII.........................WWWWWWWWWWWWWEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE",
-"..........IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII..........................WWWWWWWWWWWWWWEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE",
-"..........IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII..........................WWWWWWWWWWWWEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE",
-".......IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII...........................WWWWWWWWWWWEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE",
-".......IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII............................WWWWWWWWWWWEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE",
-"........IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII...........................WWWWWWWWWWWWWWEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE",
-".....I..IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII...........................WWWWWWWWWWWWWWWEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE.",
-"..IIIII.IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII.........................WWWWWWWWWWWWWWWEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE.",
-".IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII.......................WWWWWWWWWWWWWWWWWEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE.",
-"IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII.............................WWWWWWWWWWWWWWWWWEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE.",
-"IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII.I............................WWWWWWWWWWWWWWWWWWWWEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE..",
-"......IIIIIIIIIIIIIIIIIIIIIIIIIIIIIII.................................WWWWWWWWWWWWWWWWWWWWWEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE..",
-"....IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII..............................WWWWWWWWWWWWWWWWWWWWWWWWEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE...",
-"...IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII..............................WWWWWWWWWWWWWWWWWWWWWWWWWWEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE....",
-".IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII..............................WWWWWWWWWWWWWWWWWWWWWWWWWWWWWEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE.....",
-".IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII...............................WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE......",
-".IIIIIIIIIIIIIIIIIIIIIIIIII.III...................................WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE......",
-"..I.IIIIIIIIIIIIIIIIIIIIIIIIII....................................WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE.EEE......",
-"....IIIIIIIIIIIIIIIIIIIIIII......................................WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE..........",
-"......IIIIII.IIIIIIIIIIIIII......................................WWWWWWW...WWWWWWWWWWWWWWWWWWWWWEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE..........",
-".....IIIII.IIIIIIIIIIIIII.........................................WWWWWW......WWWWWWWWWWWWWWWWWWEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE..........",
-"....IIIIIIIIIIIIIIIIIII............................................WW.......WWWWWWWWWWWWWWWWWWWWWEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE..........",
-"........IIIIIIIIIIII........................................................WWWWW..WWWWWWWWWWWWWEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE..........",
-".........IIIIIIII..................................................................WWWWWWWWW....EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE............",
-"........II....I....................................................................WWWWWWWW...EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE.............",
-".....................................................................................WWWWWW...EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE..........",
-"......................................................................................WWWW...EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE.EEEEE....",
-"............................................................................................EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE....",
-"............................................................................................EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE....",
-".................................................................................EEEEE......EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE....",
-".............................................................................EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE....",
-".............................................................................EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE....",
-".............................................................................EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE.....",
-".............................................................................EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE........",
-".........................................................................EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE.........",
-".........................................................................EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE.........",
-".........................................................................EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE.........",
-".........................................................................EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE.............",
-".........................................................................EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE...............",
-".........................................................................EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE.EEEEEEE.......EEEEE.................",
-"........................................................................EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE...E............E..................",
-".......................................................................EEEEEEEEEEEEEEEEEEEEE....EEEEEEEEEE....EEEEEEE..................................",
-"......................................................................EEEEEEEEEEEEEEEEEEE........EEEEEEEEE.....EEEEE...................................",
-".....................................................................EEEEEEEEEEEEEEEEEE...........E....EE.......EEE....................................",
-"...................................................................EEEEEEEEEEEEEEEEEEEE............E...................................................",
-"...................................................................EEEEEEEEEEEEEEEEEEEE................................................................",
-"...................................................................EEEEEEEEEEEEEEEEEEEE................................................................",
-"..................................................................EEEEEEEEEEEEEEEEEEEEE................................................................",
-"..................................................................EEEEEEEEEEEEEEEEEEEE.................................................................",
-".................................................................EEEEEEEEE...E.EEEEEE..................................................................",
-"................................................................EEEEEEE..........EEEE..................................................................",
-".............................................................E.EEEEEEEE...........EEE..................................................................",
-"...........................................................EEEEEEEEEE..................................................................................",
-"...........................................................EEEEEEEE....................................................................................",
-"...........................................................EEE.EEEE....................................................................................",
-"...........................................................EE...EEE....................................................................................",
-"................................................................EE....................................................................................."
-]
-
-# THE DRAWING.
-# Build a picture the same size as the grid and color it in,
-# one pixel at a time, based on what character sits there.
+from matplotlib.path import Path
 
 SEA  = (247, 245, 240)   # background
 LAND = (166, 166, 166)   # grey for all land
 
-heat = {                  # yellow at the edge -> deep red at the center
-    "1": (248, 217,  78),
-    "2": (249, 195,  63),
-    "3": (249, 170,  51),
-    "4": (246, 143,  42),
-    "5": (239, 114,  34),
-    "6": (226,  85,  28),
-    "7": (207,  58,  22),
-    "8": (181,  36,  16),
-    "9": (143,  13,   6),
-}
+SCALE = 3  # pixel density relative to the original 155x236 hand-drawn grid
+BASE_WIDTH, BASE_HEIGHT = 155, 236
+TARGET_WIDTH = BASE_WIDTH * SCALE
 
-height = len(pixels)
-width  = max(len(row) for row in pixels)   # rows aren't all the same length, so size to the longest
-is_land = np.zeros((height, width), dtype=bool)
+with open("historic_counties.geojson") as f:
+    uk_counties = json.load(f)["features"]
+with open("ireland_counties.geojson") as f:
+    ireland_counties = json.load(f)["features"]
 
-for row, line in enumerate(pixels):
-    for col, ch in enumerate(line):
-        if ch != ".":
-            is_land[row, col] = True
+def polygons_of(feat):
+    geom = feat["geometry"]
+    return geom["coordinates"] if geom["type"] == "MultiPolygon" else [geom["coordinates"]]
+
+# Project real (lon, lat) onto the pixel grid: equirectangular, fit to the
+# combined UK+Ireland extent, with a latitude correction (cos of the
+# mid-latitude) so the country isn't stretched east-west.
+all_points = [pt for feat in uk_counties + ireland_counties
+              for poly in polygons_of(feat) for ring in poly for pt in ring]
+lons = [p[0] for p in all_points]
+lats = [p[1] for p in all_points]
+lon_min, lon_max = min(lons), max(lons)
+lat_min, lat_max = min(lats), max(lats)
+lon_scale = np.cos(np.radians((lat_min + lat_max) / 2))
+
+PAD = 6 * SCALE
+scale = (TARGET_WIDTH - 2 * PAD) / ((lon_max - lon_min) * lon_scale)
+width = TARGET_WIDTH
+height = int((lat_max - lat_min) * scale) + 2 * PAD
+
+def lonlat_to_pixel(lon, lat):
+    col = (lon - lon_min) * lon_scale * scale + PAD
+    row = (lat_max - lat) * scale + PAD
+    return col, row
+
+# THE COUNTIES. Rasterize every historic county polygon directly onto the
+# pixel grid, so every land pixel already knows which real county it's in
+# — no separate calibration step needed, since the grid is built from this
+# same real geometry in the first place.
+county_names = [feat["properties"]["name"] for feat in uk_counties]
+county_index = np.full((height, width), -1, dtype=np.int16)
+
+cols_mesh, rows_mesh = np.meshgrid(np.arange(width), np.arange(height))
+grid_pts = np.column_stack([cols_mesh.ravel(), rows_mesh.ravel()])
+
+for i, feat in enumerate(uk_counties):
+    mask = np.zeros(height * width, dtype=bool)
+    for poly in polygons_of(feat):
+        pixel_ring = [lonlat_to_pixel(lon, lat) for lon, lat in poly[0]]
+        mask |= Path(pixel_ring).contains_points(grid_pts)
+    county_index[mask.reshape(height, width)] = i
+
+# Ireland has no historic-county backend data here (out of scope for a UK
+# dialect quiz), but its coastline still needs to be drawn.
+ireland_mask = np.zeros(height * width, dtype=bool)
+for feat in ireland_counties:
+    for poly in polygons_of(feat):
+        pixel_ring = [lonlat_to_pixel(lon, lat) for lon, lat in poly[0]]
+        ireland_mask |= Path(pixel_ring).contains_points(grid_pts)
+ireland_mask = ireland_mask.reshape(height, width)
+
+is_land = (county_index >= 0) | ireland_mask
 
 # close stray one-pixel sea holes inside the landmass: flood-fill sea from
 # the outer border, then anything left unreached is an enclosed hole, not
 # real coastline, so treat it as land
-from collections import deque
 reached = np.zeros((height, width), dtype=bool)
 q = deque()
 for r in range(height):
@@ -305,44 +105,75 @@ while q:
                 reached[nr, nc] = True
                 q.append((nr, nc))
 enclosed_hole = (~is_land) & (~reached)
+total_land = is_land | enclosed_hole
+
+# a handful of remaining UK land pixels (tiny gaps between adjacent county
+# polygons, or filled-in holes) get the nearest already-labeled county,
+# spreading outward the same way the hole-fill above does
+fillable = total_land & (~ireland_mask) & (county_index == -1)
+seed_q = deque()
+has_county = county_index >= 0
+for r in range(height):
+    for c in range(width):
+        if has_county[r, c]:
+            seed_q.append((r, c))
+while seed_q:
+    r, c = seed_q.popleft()
+    v = county_index[r, c]
+    for dr in (-1, 0, 1):
+        for dc in (-1, 0, 1):
+            if dr == 0 and dc == 0:
+                continue
+            nr, nc = r + dr, c + dc
+            if 0 <= nr < height and 0 <= nc < width and fillable[nr, nc] and county_index[nr, nc] == -1:
+                county_index[nr, nc] = v
+                seed_q.append((nr, nc))
 
 picture = np.full((height, width, 3), SEA, dtype=np.uint8)
-for row, line in enumerate(pixels):
-    for col, ch in enumerate(line):
-        if ch in heat:
-            picture[row, col] = heat[ch]
-        elif ch != ".":
-            picture[row, col] = LAND
-picture[enclosed_hole] = LAND
+picture[total_land] = LAND
+
+# CITIES. A handful of well-known landmarks, projected the same way.
+cities = [
+    ("London", -0.1278, 51.5074), ("Manchester", -2.2426, 53.4808),
+    ("Birmingham", -1.8904, 52.4862), ("Leeds", -1.5491, 53.8008),
+    ("Liverpool", -2.9916, 53.4084), ("Bristol", -2.5879, 51.4545),
+    ("Edinburgh", -3.1883, 55.9533), ("Glasgow", -4.2518, 55.8642),
+    ("Cardiff", -3.1791, 51.4816), ("Belfast", -5.9301, 54.5973),
+    ("Newcastle", -1.6178, 54.9783), ("Sheffield", -1.4701, 53.3811),
+    ("Nottingham", -1.1581, 52.9548), ("Oxford", -1.2577, 51.7520),
+    ("Cambridge", 0.1218, 52.2053), ("York", -1.0827, 53.9600),
+    ("Norwich", 1.2974, 52.6309), ("Exeter", -3.5339, 50.7184),
+    ("Aberdeen", -2.0943, 57.1497), ("Inverness", -4.2247, 57.4778),
+]
 
 # crop tight around the landmass (plus a small margin) so it's centered
 # in the frame instead of floating in a lot of empty sea
-land_rows, land_cols = np.nonzero(is_land | enclosed_hole)
-margin = 3
+land_rows, land_cols = np.nonzero(total_land)
+margin = 3 * SCALE
 r0, r1 = max(land_rows.min() - margin, 0), min(land_rows.max() + margin + 1, height)
 c0, c1 = max(land_cols.min() - margin, 0), min(land_cols.max() + margin + 1, width)
 picture = picture[r0:r1, c0:c1]
+county_index = county_index[r0:r1, c0:c1]
+total_land = total_land[r0:r1, c0:c1]
 height, width = picture.shape[:2]
+
+cropped_cities = []
+for name, lon, lat in cities:
+    col, row = lonlat_to_pixel(lon, lat)
+    col, row = col - c0, row - r0
+    if 0 <= col < width and 0 <= row < height:
+        cropped_cities.append((name, col, row))
+cities = cropped_cities
 
 plt.figure(figsize=(7, 11))
 plt.imshow(picture)
 plt.axis("off")
 plt.show()
 
-# build a clean, uniform character grid that matches the cleaned-up,
-# cropped `picture` array exactly (holes closed, same crop window),
-# so the HTML/canvas version matches the PNG instead of drifting from it
-char_grid = [["."] * (c1 - c0) for _ in range(r0, r1)]
-for out_r, row in enumerate(range(r0, r1)):
-    line = pixels[row] if row < len(pixels) else ""
-    for out_c, col in enumerate(range(c0, c1)):
-        ch = line[col] if col < len(line) else "."
-        if enclosed_hole[row, col]:
-            ch = "X"  # closed hole -> plain land
-        char_grid[out_r][out_c] = ch
-cropped_pixels = ["".join(row) for row in char_grid]
+cropped_pixels = ["".join("X" if total_land[r, c] else "." for c in range(width)) for r in range(height)]
+county_grid = county_index.tolist()  # -1 = no county data (sea, or Ireland)
 
-CELL = 3  # pixels per grid cell, smaller = smaller page footprint
+CELL = 1  # pixels per grid cell; kept at SCALE original-CELL so the page footprint is unchanged
 
 html = """<!DOCTYPE html>
 <html>
@@ -359,19 +190,46 @@ html = """<!DOCTYPE html>
 const pixels = %s;
 const CELL = %d;
 const LAND = "#a6a6a6";
-const heat = [null,"#f8d94e","#f9c33f","#f9aa33","#f68f2a",
-  "#ef7222","#e2551c","#cf3a16","#b52410","#8f0d06"];
 const ctx = document.getElementById("c").getContext("2d");
 for (let row = 0; row < pixels.length; row++)
   for (let col = 0; col < pixels[row].length; col++) {
-    const ch = pixels[row][col];
-    if (ch === ".") continue;
-    ctx.fillStyle = (ch >= "1" && ch <= "9") ? heat[Number(ch)] : LAND;
-    ctx.fillRect(col * CELL, row * CELL, CELL - 0.6, CELL - 0.6);
+    if (pixels[row][col] === ".") continue;
+    ctx.fillStyle = LAND;
+    ctx.fillRect(col * CELL, row * CELL, CELL, CELL);
   }
-</script></body></html>""" % (width * CELL, height * CELL, str(cropped_pixels), CELL)
+
+// Backend region data — not shown on screen, but available to any script
+// on this page (e.g. your quiz logic) via window.regionData:
+//   regionData.countyNames[i]        -> name of county i
+//   regionData.countyGrid[row][col]  -> county index at that pixel, or -1
+//   regionData.cities                -> [[name, col, row], ...]
+//   regionData.getRegionAt(row, col) -> county name at that pixel, or null
+//   regionData.getCityNear(col, row) -> nearest city within a few pixels, or null
+const countyNames = %s;
+const countyGrid = %s;
+const cities = %s;
+window.regionData = {
+  countyNames,
+  countyGrid,
+  cities,
+  getRegionAt(row, col) {
+    if (row < 0 || row >= countyGrid.length || col < 0 || col >= countyGrid[0].length) return null;
+    const idx = countyGrid[row][col];
+    return idx >= 0 ? countyNames[idx] : null;
+  },
+  getCityNear(col, row, maxDist) {
+    maxDist = maxDist || 3;
+    for (const [name, ccol, crow] of cities)
+      if (Math.hypot(col - ccol, row - crow) <= maxDist) return name;
+    return null;
+  },
+};
+</script></body></html>""" % (
+    width * CELL, height * CELL, str(cropped_pixels), CELL,
+    json.dumps(county_names), json.dumps(county_grid), json.dumps(cities),
+)
 
 with open("map.html", "w") as f:
     f.write(html)
 
-print("Saved map.html next to this script.")
+print(f"Saved map.html next to this script. Grid is {width}x{height} ({SCALE}x the original density).")
