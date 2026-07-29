@@ -30,6 +30,7 @@ import matplotlib.cm as cm
 from matplotlib.path import Path
 from PIL import Image
 from scipy.spatial import cKDTree
+from scipy.ndimage import gaussian_filter
 
 SEA  = (247, 245, 240)   # background
 LAND = (166, 166, 166)   # grey for all land
@@ -117,7 +118,7 @@ SCALE = 3  # pixel density relative to the original 155x236 hand-drawn grid
 BASE_WIDTH, BASE_HEIGHT = 155, 236
 TARGET_WIDTH = BASE_WIDTH * SCALE
 
-EXCLUDED_COUNTIES = {"Orkney"}
+EXCLUDED_COUNTIES = {"Shetland"}
 
 with open("historic_counties.geojson") as f:
     uk_counties = [feat for feat in json.load(f)["features"]
@@ -372,18 +373,28 @@ def build_map(include_ireland, out_prefix, exclude_extra=None, use_footstrut_hea
 
     # MOSAIC GRID. For rendering only (the raw data/JSON/CSV stay at the
     # plain low-res grid): blow each pixel up into a small tile with a
-    # thin gap of page-background color around it, so tiles read as
+    # soft seam of page-background color around it, so tiles read as
     # separate hand-placed mosaic squares instead of one solid 8-bit
-    # block image.
+    # block image. The seam is deliberately blurred, not a hard 1px
+    # line — a sharp line at this scale is a high-frequency pattern
+    # that aliases unevenly under any later resize (matplotlib's own
+    # bbox rendering, then the browser scaling the image to fit the
+    # screen), showing up strong in some rows/columns and vanishing in
+    # others. Blurring it first means every later resize just blends
+    # already-smooth pixels, so the grid reads evenly everywhere.
     if pixelate_block and pixelate_block > 1:
-        TILE, GAP = 6, 1
+        TILE, GAP = 10, 2
         inner = TILE - GAP
         off = GAP // 2
-        render_picture = np.full((height * TILE, width * TILE, 3), SEA, dtype=np.uint8)
-        for i in range(height):
-            for j in range(width):
-                render_picture[i * TILE + off:i * TILE + off + inner,
-                                j * TILE + off:j * TILE + off + inner] = picture[i, j]
+        cell_mask = np.zeros((TILE, TILE), dtype=float)
+        cell_mask[off:off + inner, off:off + inner] = 1.0
+        mask = np.tile(cell_mask, (height, width))
+        mask = gaussian_filter(mask, sigma=1.0)
+        color_upsampled = np.repeat(np.repeat(picture, TILE, axis=0), TILE, axis=1).astype(float)
+        bg = np.array(SEA, dtype=float)
+        render_picture = np.clip(
+            mask[..., None] * color_upsampled + (1 - mask[..., None]) * bg, 0, 255
+        ).astype(np.uint8)
         render_height, render_width = render_picture.shape[:2]
         render_callouts = [(label, col * TILE + TILE / 2, row * TILE + TILE / 2, pct)
                             for label, col, row, pct in callout_points]
@@ -417,7 +428,7 @@ def build_map(include_ireland, out_prefix, exclude_extra=None, use_footstrut_hea
                         arrowprops=dict(arrowstyle="-", color="#888", lw=0.8))
         ax.set_xlim(0, render_width * 1.85)
 
-    plt.savefig(f"{out_prefix}.png", dpi=150, bbox_inches="tight")
+    plt.savefig(f"{out_prefix}.png", dpi=(400 if pixelate_block else 150), bbox_inches="tight")
     plt.close()
 
     char_grid = [["X" if total_land[r, c] else "." for c in range(width)] for r in range(height)]
@@ -483,8 +494,7 @@ def build_map(include_ireland, out_prefix, exclude_extra=None, use_footstrut_hea
 <style>
   html, body { margin: 0; height: 100%%; overflow: hidden; }
   body { display: flex; justify-content: center; align-items: center; background: #f7f5f0; }
-  img { max-width: 95vw; max-height: 95vh; width: auto; height: auto; display: block;
-        image-rendering: pixelated; image-rendering: crisp-edges; }
+  img { max-width: 95vw; max-height: 95vh; width: auto; height: auto; display: block; }
 </style>
 </head>
 <body>
