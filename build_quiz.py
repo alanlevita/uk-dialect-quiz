@@ -427,7 +427,7 @@ const QUESTIONS=[
    info:"bookspook",infoLabel:"book vs spook",
    opts:[{label:"Yes, they rhyme",v:1,word:"rhyme book/spook"},{label:"No, they sound different",v:0,word:"don&rsquo;t rhyme"}]},
   {id:"trapbath",text:"Do <i>gas</i> and <i>grass</i> rhyme for you?",tag:"blended: BBC Future + English Dialect App",real:true,metric:"pct",
-   info:"trapbath",infoLabel:"the TRAP&ndash;BATH split",
+   info:"trapbath",infoLabel:"the trap&ndash;bath split",
    opts:[{label:"Yes, they rhyme",v:1,word:"rhyme (short a)"},
          {label:"No, they sound different",v:0,word:"split (long a)"}]},
   // binary + the paper gives real proportions -> metric "pct"
