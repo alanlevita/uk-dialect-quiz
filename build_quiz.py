@@ -749,6 +749,6 @@ showIntro();
     json.dumps(dialect_grid), json.dumps(dialect_colors),
 )
 
-with open("quiz.html", "w") as f:
+with open("index.html", "w") as f:
     f.write(html)
-print("wrote quiz.html — landing page + 6 questions; lexical are multi-select w/ 'no word' negative map")
+print("wrote index.html — done. Now just: git add index.html build_quiz.py && git commit -m 'update' && git push")
