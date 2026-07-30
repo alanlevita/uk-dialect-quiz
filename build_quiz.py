@@ -448,7 +448,7 @@ html = """<!DOCTYPE html>
        line-height:1.35;white-space:nowrap;pointer-events:none;opacity:0;transform:translate(-50%%,-118%%);
        transition:opacity .1s;} .tip b{font-weight:600;} .tip small{opacity:.82;}
   /* landing page: two panels, vertically centred and filling the viewport */
-  #intro{display:flex;gap:44px;align-items:center;justify-content:center;max-width:1000px;
+  #intro{display:flex;gap:8vw;align-items:center;justify-content:center;max-width:1180px;
        margin:0 auto;min-height:calc(100vh - 40px);flex-wrap:wrap;}
   .intro-left{flex:0 0 320px;max-width:320px;display:flex;flex-direction:column;align-items:center;text-align:center;}
   .intro-right{flex:0 1 400px;max-width:400px;display:flex;flex-direction:column;justify-content:center;text-align:left;}
@@ -464,7 +464,7 @@ html = """<!DOCTYPE html>
   #startbtn{font-size:16px;font-weight:650;color:#fff;background:var(--accent);border:none;border-radius:12px;
        padding:15px 36px;cursor:pointer;transition:all .14s;box-shadow:0 6px 18px rgba(192,20,31,.24);}
   #startbtn:hover{background:#a5101a;transform:translateY(-2px);box-shadow:0 9px 22px rgba(192,20,31,.30);}
-  .intro-note{font-size:12px;color:var(--muted);margin:16px 0 0;letter-spacing:.03em;text-align:left;}
+  .intro-note{font-size:12px;color:var(--muted);margin:18px 0 0;letter-spacing:.03em;text-align:center;}
   .aboutwrap{position:relative;display:inline-block;vertical-align:middle;}
   .aboutbtn{color:#0a7a63;cursor:help;font-size:15px;line-height:1;}
   .aboutinfo{display:none;position:absolute;bottom:150%%;left:50%%;transform:translateX(-50%%);width:430px;max-width:88vw;
@@ -493,7 +493,7 @@ html = """<!DOCTYPE html>
       <p class="intro-lead">How you say a few everyday words, and what you call bread, your evening meal, or a splinter, quietly gives away where in Britain you&rsquo;re from.</p>
       <p class="intro-body">This short quiz asks how <i>you</i> speak. After each answer a heat map lights up, showing where in Great Britain that feature is common, all drawn from published dialect research. Work through them and see which corner of the map your speech belongs to.</p>
       <button id="startbtn">Start the quiz &rarr;</button>
-      <p class="intro-note"><span class="aboutwrap"><span class="aboutbtn">&#9432;</span><span class="aboutinfo">>This is a pixel-art version of the British dialect map. It was made by <b>Alan Levita</b> during an internship at the Intellectual Forum at Jesus College, University of Cambridge, drawing on the research of <b>Prof. Bert Vaux</b> of King&rsquo;s College, Cambridge. Bert&rsquo;s work formed the basis for the original <i>New York Times</i> dialect quiz.<br><br>Your answers are used to estimate roughly where you&rsquo;re from. All the maps were redrawn by hand in a pixel-art style, based on isoglosses from published research on British dialects.</span></span> Powered by the Intellectual Forum at Jesus College, University of Cambridge</p>
+      <p class="intro-note"><span class="aboutwrap"><span class="aboutbtn">&#9432;</span><span class="aboutinfo">This is a pixel-art version of the British dialect map. It was made by <b>Alan Levita</b> during an internship at the Intellectual Forum at Jesus College, University of Cambridge, drawing on the research of <b>Prof. Bert Vaux</b> of King&rsquo;s College, Cambridge. Bert&rsquo;s work formed the basis for the original <i>New York Times</i> dialect quiz.<br><br>Your answers are used to estimate roughly where you&rsquo;re from. All the maps were redrawn by hand in a pixel-art style, based on isoglosses from published research on British dialects.</span></span> Powered by the Intellectual Forum at Jesus College, University of Cambridge</p>
   <div id="stage">
     <div id="left">
       <h1 id="qtext"></h1>
