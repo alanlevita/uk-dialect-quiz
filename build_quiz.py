@@ -328,16 +328,17 @@ region_grid = [[(county_region.get(names[cg[r][c]], -1) if land[r][c] else -1)
 # match dialect-map.jpg: Scotland (blue), the North (purple), the Midlands
 # (orange), East Anglia (yellow), the South (red), the West Country (green),
 # Wales (teal-green). Great Britain only (the grid has no Ireland).
+# muted, atlas-style colours (less bright than before)
 DIALECT = [
-    ("Scotland", SCOT, (43, 62, 190)),
-    ("The North", NORTH, (150, 55, 162)),
-    ("The Midlands", EMIDS + WMIDS, (240, 140, 35)),
-    ("East Anglia", EANG + ["Essex"], (233, 205, 40)),
+    ("Scotland", SCOT, (78, 110, 168)),
+    ("The North", NORTH, (146, 100, 156)),
+    ("The Midlands", EMIDS + WMIDS, (216, 146, 80)),
+    ("East Anglia", EANG + ["Essex"], (212, 192, 110)),
     ("The South", ["Bedfordshire", "Berkshire", "Buckinghamshire", "Hampshire", "Hertfordshire",
-                   "Kent", "Middlesex", "Oxfordshire", "Surrey", "Sussex"], (204, 44, 54)),
+                   "Kent", "Middlesex", "Oxfordshire", "Surrey", "Sussex"], (190, 96, 100)),
     ("The West Country", ["Cornwall", "Devon", "Dorset", "Gloucestershire", "Somerset", "Wiltshire"],
-     (34, 150, 58)),
-    ("Wales", WALES, (18, 96, 82)),
+     (92, 152, 104)),
+    ("Wales", WALES, (60, 128, 116)),
 ]
 county_dialect = {}
 for di, (dn, cl, _col) in enumerate(DIALECT):
@@ -347,6 +348,35 @@ dialect_grid = [[(county_dialect.get(names[cg[r][c]], -1) if land[r][c] else -1)
                  for c in range(W)] for r in range(H)]
 dialect_colors = [[dn, list(col)] for dn, _cl, col in DIALECT]
 
+# ---- HIGH-RES landing map: rasterize the real historic-county polygons so the
+# teaser is detailed like the survey maps (still a pixel raster, just much finer) ----
+from matplotlib.path import Path as _MplPath
+_gj = json.load(open("historic_counties.geojson"))
+_polys = []
+for _ft in _gj["features"]:
+    _di = county_dialect.get(_ft["properties"].get("name"), -1)
+    if _di < 0:
+        continue
+    _geom = _ft["geometry"]
+    _coords = _geom["coordinates"] if _geom["type"] == "MultiPolygon" else [_geom["coordinates"]]
+    for _poly in _coords:
+        _polys.append((_di, _poly[0]))
+_pts = [p for _, ring in _polys for p in ring]
+_lon0, _lon1 = min(p[0] for p in _pts), max(p[0] for p in _pts)
+_lat0, _lat1 = min(p[1] for p in _pts), max(p[1] for p in _pts)
+_kx = float(np.cos(np.radians((_lat0 + _lat1) / 2)))
+_Hh = 480
+_Wh = int(round((_lon1 - _lon0) * _kx / (_lat1 - _lat0) * _Hh))
+_xs, _ys = np.meshgrid(np.arange(_Wh), np.arange(_Hh))
+_gp = np.column_stack([_xs.ravel() + 0.5, _ys.ravel() + 0.5])
+_hg = np.full(_Hh * _Wh, -1, dtype=int)
+for _di, _ring in _polys:
+    _proj = [((lo - _lon0) * _kx / ((_lon1 - _lon0) * _kx) * (_Wh - 1),
+              (_lat1 - la) / (_lat1 - _lat0) * (_Hh - 1)) for lo, la in _ring]
+    _hg[_MplPath(_proj).contains_points(_gp)] = _di
+_hg = _hg.reshape(_Hh, _Wh)
+hires_dialect = ["".join("." if v < 0 else str(v) for v in row) for row in _hg]
+
 html = """<!DOCTYPE html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><style>
   :root{--bg:#f7f5f0;--ink:#2b2b2b;--muted:#8a857c;--accent:#c0141f;--card:#fff;--line:#e6e1d8;}
@@ -354,7 +384,7 @@ html = """<!DOCTYPE html>
   html,body{margin:0;min-height:100%%;}
   body{background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,sans-serif;}
   #app{max-width:1060px;margin:0 auto;padding:20px 20px 16px;position:relative;}
-  #qimg{display:block;width:150px;height:150px;object-fit:cover;border-radius:14px;margin:2px 0 14px;box-shadow:0 4px 14px rgba(0,0,0,.14);}
+  #qimg{display:block;width:230px;height:230px;object-fit:cover;border-radius:16px;margin:2px auto 16px;box-shadow:0 6px 18px rgba(0,0,0,.16);}
   .sliderbox{margin:20px 0 8px;}
   .sliderbox input[type=range]{width:100%%;accent-color:var(--accent);height:6px;cursor:pointer;}
   .slabels{display:flex;justify-content:space-between;align-items:flex-start;font-size:12px;color:var(--muted);margin-top:10px;line-height:1.35;}
@@ -417,18 +447,19 @@ html = """<!DOCTYPE html>
   .tip{position:absolute;background:var(--ink);color:#fff;padding:6px 10px;border-radius:6px;font-size:12px;
        line-height:1.35;white-space:nowrap;pointer-events:none;opacity:0;transform:translate(-50%%,-118%%);
        transition:opacity .1s;} .tip b{font-weight:600;} .tip small{opacity:.82;}
-  /* landing page: two panels side by side */
-  #intro{display:flex;gap:48px;align-items:center;justify-content:center;max-width:940px;margin:12px auto 0;flex-wrap:wrap;}
-  .intro-left{flex:0 0 auto;text-align:center;}
-  .intro-right{flex:1 1 360px;max-width:420px;text-align:left;}
-  .intro-title{font-size:30px;font-weight:750;letter-spacing:-.02em;margin:0 0 4px;line-height:1.1;}
-  .intro-sub{font-size:12.5px;color:var(--muted);margin:0 0 14px;}
-  #introcv{display:block;margin:0 auto 12px;image-rendering:auto;}
-  #introlegend{display:flex;flex-wrap:wrap;justify-content:center;gap:6px 14px;max-width:340px;margin:0 auto 4px;}
-  #introlegend .lg{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;color:#555;}
-  #introlegend .sw{width:11px;height:11px;border-radius:3px;display:inline-block;}
-  .intro-cap{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:0;}
-  .intro-lead{font-size:24px;line-height:1.4;font-weight:700;letter-spacing:-.01em;margin:0 0 16px;}
+  /* landing page: two panels that fill the width, vertically centred */
+  #intro{display:flex;gap:56px;align-items:center;justify-content:center;max-width:1000px;
+       margin:0 auto;min-height:80vh;flex-wrap:wrap;}
+  .intro-left{flex:1 1 320px;display:flex;flex-direction:column;align-items:center;text-align:center;}
+  .intro-right{flex:1 1 360px;max-width:440px;display:flex;flex-direction:column;justify-content:center;text-align:left;}
+  .intro-title{font-size:32px;font-weight:750;letter-spacing:-.02em;margin:0 0 4px;line-height:1.1;}
+  .intro-sub{font-size:12.5px;color:var(--muted);margin:0 0 16px;}
+  #introcvwrap{position:relative;display:inline-block;}
+  #introcv{display:block;margin:0 auto 10px;image-rendering:auto;cursor:crosshair;max-width:100%%;}
+  #introtip{position:absolute;pointer-events:none;opacity:0;transform:translate(-50%%,-135%%);white-space:nowrap;
+       font-size:12px;font-weight:650;color:#fff;padding:4px 9px;border-radius:6px;transition:opacity .08s;z-index:5;}
+  .intro-cap{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:0;min-height:1.2em;}
+  .intro-lead{font-size:25px;line-height:1.4;font-weight:700;letter-spacing:-.01em;margin:0 0 16px;}
   .intro-body{font-size:15.5px;line-height:1.65;color:#555;margin:0 0 28px;}
   #startbtn{font-size:16px;font-weight:650;color:#fff;background:var(--accent);border:none;border-radius:12px;
        padding:15px 36px;cursor:pointer;transition:all .14s;box-shadow:0 6px 18px rgba(192,20,31,.24);}
@@ -455,9 +486,8 @@ html = """<!DOCTYPE html>
     <div class="intro-left">
       <div class="intro-title">The British Dialect Quiz</div>
       <div class="intro-sub">Answer a few questions, see where each answer places you on the map.</div>
-      <canvas id="introcv"></canvas>
-      <div id="introlegend"></div>
-      <p class="intro-cap">The major dialect groups of Great Britain</p>
+      <div id="introcvwrap"><canvas id="introcv"></canvas><div id="introtip"></div></div>
+      <p class="intro-cap" id="introcap">Hover the map to explore the dialect groups</p>
     </div>
     <div class="intro-right">
       <p class="intro-lead">How you say a few everyday words, and what you call bread, your evening meal, or a splinter, quietly gives away where in Britain you&rsquo;re from.</p>
@@ -497,6 +527,7 @@ const grids=%s;
 const land=%s,cities=%s,cg=%s,names=%s;
 const regionGrid=%s,regionNames=%s;
 const dialectGrid=%s,dialectColors=%s;
+const HIRES=%s;
 const POPSICLE_IMG=%s;
 const QUESTIONS=[
   // metric "pct": a clean binary the paper reports as proportions -> show a percent.
@@ -544,7 +575,7 @@ const QUESTIONS=[
    ]},
   // single-select lexical with a photo. "ice lolly" is standard; "lolly ice" is the
   // Merseyside reversal. "other"/"no word" don't map to a region (inconclusive).
-  {id:"lolly",text:"Would you ever call this frozen treat an <i>ice lolly</i> or a <i>lolly ice</i>?",
+  {id:"lolly",text:"What would you call this frozen treat?",
    img:POPSICLE_IMG,tag:"",real:true,metric:"prevalence",info:"lolly",infoLabel:"ice lolly vs lolly ice",
    opts:[
      {label:"Ice lolly",v:"icelolly",term:"ice lolly",grid:"icelolly"},
@@ -591,6 +622,8 @@ for(const k in grids){let s=0,n=0;const g=grids[k];
   gridMean[k]=n?s/n:1e-6;}
 
 function clearRight(prompt){
+  // no map yet -> hide the whole right panel and let the left frame center on the page
+  document.getElementById("right").style.display="none";
   document.getElementById("rprompt").style.display="";cv.style.display="none";
   document.getElementById("legend").style.display="none";document.getElementById("detail").innerHTML="";
   document.getElementById("match").innerHTML="";
@@ -735,6 +768,7 @@ function matchByLevel(surf,target){
 }
 
 function drawMap(q,ans){
+  document.getElementById("right").style.display="";   // map revealed -> show the right panel
   document.getElementById("rprompt").style.display="none";cv.style.display="block";
   document.getElementById("legend").style.display="flex";
   const multi=Array.isArray(ans);
@@ -862,20 +896,28 @@ cv.addEventListener("click",(e)=>{
 
 // ---- landing page: pixel map of Great Britain's major dialect groups ----
 function drawMini(){
-  const M=4, mc=document.getElementById("introcv"); mc.width=W*M; mc.height=H_*M;
-  mc.style.width=(W*M/2)+"px"; mc.style.height=(H_*M/2)+"px"; // retina-crisp
+  const rows=HIRES, Hh=rows.length, Wh=rows[0].length, M=2;   // fine county-shaped raster
+  const mc=document.getElementById("introcv"); mc.width=Wh*M; mc.height=Hh*M;
+  mc.style.width=(Wh*M/2)+"px"; mc.style.height=(Hh*M/2)+"px"; // EXACT 2:1 -> uniform pixels
   const mx=mc.getContext("2d");
-  for(let r=0;r<H_;r++)for(let c=0;c<W;c++){
-    if(!land[r][c])continue;
-    const di=dialectGrid[r][c];
-    const col=di>=0?dialectColors[di][1]:[205,205,210];
+  for(let r=0;r<Hh;r++){const row=rows[r];for(let c=0;c<Wh;c++){
+    const ch=row[c]; if(ch===".")continue;
+    const col=dialectColors[+ch][1];
     mx.fillStyle="rgb("+col[0]+","+col[1]+","+col[2]+")";
-    mx.fillRect(c*M,r*M,M-0.7,M-0.7); // small grout gap -> mosaic look
-  }
-  const lg=document.getElementById("introlegend"); lg.innerHTML="";
-  dialectColors.forEach(([nm,col])=>{const s=document.createElement("span");s.className="lg";
-    s.innerHTML="<span class='sw' style='background:rgb("+col[0]+","+col[1]+","+col[2]+")'></span>"+nm;
-    lg.appendChild(s);});
+    mx.fillRect(c*M,r*M,M,M);
+  }}
+  // hover -> name the dialect group under the cursor (replaces the old static key)
+  const tip=document.getElementById("introtip"), cap=document.getElementById("introcap");
+  mc.onmousemove=(e)=>{const rect=mc.getBoundingClientRect();
+    const c=Math.floor((e.clientX-rect.left)/(rect.width/Wh)), r=Math.floor((e.clientY-rect.top)/(rect.height/Hh));
+    const ch=(r>=0&&r<Hh&&c>=0&&c<Wh)?rows[r][c]:".";
+    const di=(ch===".")?-1:+ch;
+    if(di>=0){const [nm,col]=dialectColors[di];
+      tip.textContent=nm; tip.style.background="rgb("+col[0]+","+col[1]+","+col[2]+")";
+      tip.style.left=(e.clientX-rect.left)+"px"; tip.style.top=(e.clientY-rect.top)+"px"; tip.style.opacity=1;
+      cap.textContent=nm; cap.style.color="rgb("+col[0]+","+col[1]+","+col[2]+")";
+    } else { tip.style.opacity=0; }};
+  mc.onmouseleave=()=>{tip.style.opacity=0; cap.textContent="Hover the map to explore the dialect groups"; cap.style.color="";};
 }
 function startQuiz(){
   document.getElementById("intro").style.display="none";
@@ -902,6 +944,7 @@ showIntro();
     json.dumps(cities), json.dumps(cg.tolist()), json.dumps(names),
     json.dumps(region_grid), json.dumps(region_names),
     json.dumps(dialect_grid), json.dumps(dialect_colors),
+    json.dumps(hires_dialect),
     json.dumps(popsicle_uri),
 )
 
