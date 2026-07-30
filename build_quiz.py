@@ -491,7 +491,7 @@ html = """<!DOCTYPE html>
     </div>
     <div class="intro-right">
       <p class="intro-lead">How you say a few everyday words, and what you call bread, your evening meal, or a splinter, quietly gives away where in Britain you&rsquo;re from.</p>
-      <p class="intro-body">This short quiz asks how <i>you</i> speak. After each answer a heat map lights up, showing where in the British Isles that feature is common, all drawn from published dialect research. Work through them and see which corner of the map your speech belongs to.</p>
+      <p class="intro-body">This short quiz asks how <i>you</i> speak. After each answer a heat map lights up, showing where in Great Britain that feature is common, all drawn from published dialect research. Work through them and see which corner of the map your speech belongs to.</p>
       <button id="startbtn">Start the quiz &rarr;</button>
       <p class="intro-note"><span class="aboutwrap"><span class="aboutbtn">&#9432;</span><span class="aboutinfo">This is a pixel-art version of the British dialect map. It was made by <b>Alan Levita</b>, a Cambridge Linguistics graduate interning at the Intellectual Forum (IF) at Jesus College, together with <b>Prof. Bert Vaux</b> of King&rsquo;s College, Cambridge. Bert&rsquo;s research was the basis for the original <i>New York Times</i> dialect quiz, and the IF funds the project.<br><br>A custom algorithm uses your answers to estimate roughly where you&rsquo;re from. All the maps were redrawn by hand in a pixel-art style, based on isoglosses from published research on British dialects.</span></span> Powered by the Intellectual Forum at Jesus College, University of Cambridge</p>
     </div>
