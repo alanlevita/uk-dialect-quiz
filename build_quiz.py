@@ -417,19 +417,23 @@ html = """<!DOCTYPE html>
   .tip{position:absolute;background:var(--ink);color:#fff;padding:6px 10px;border-radius:6px;font-size:12px;
        line-height:1.35;white-space:nowrap;pointer-events:none;opacity:0;transform:translate(-50%%,-118%%);
        transition:opacity .1s;} .tip b{font-weight:600;} .tip small{opacity:.82;}
-  /* landing page */
-  #intro{max-width:600px;margin:8px auto 0;text-align:center;}
-  #introcv{display:block;margin:0 auto 14px;image-rendering:auto;}
-  #introlegend{display:flex;flex-wrap:wrap;justify-content:center;gap:6px 14px;max-width:460px;margin:0 auto 4px;}
+  /* landing page: two panels side by side */
+  #intro{display:flex;gap:48px;align-items:center;justify-content:center;max-width:940px;margin:12px auto 0;flex-wrap:wrap;}
+  .intro-left{flex:0 0 auto;text-align:center;}
+  .intro-right{flex:1 1 360px;max-width:420px;text-align:left;}
+  .intro-title{font-size:30px;font-weight:750;letter-spacing:-.02em;margin:0 0 4px;line-height:1.1;}
+  .intro-sub{font-size:12.5px;color:var(--muted);margin:0 0 14px;}
+  #introcv{display:block;margin:0 auto 12px;image-rendering:auto;}
+  #introlegend{display:flex;flex-wrap:wrap;justify-content:center;gap:6px 14px;max-width:340px;margin:0 auto 4px;}
   #introlegend .lg{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;color:#555;}
   #introlegend .sw{width:11px;height:11px;border-radius:3px;display:inline-block;}
-  .intro-cap{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:0 0 24px;}
-  .intro-lead{font-size:23px;line-height:1.4;font-weight:700;letter-spacing:-.01em;margin:0 0 16px;}
-  .intro-body{font-size:15.5px;line-height:1.65;color:#555;margin:0 auto 30px;max-width:520px;}
+  .intro-cap{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:0;}
+  .intro-lead{font-size:24px;line-height:1.4;font-weight:700;letter-spacing:-.01em;margin:0 0 16px;}
+  .intro-body{font-size:15.5px;line-height:1.65;color:#555;margin:0 0 28px;}
   #startbtn{font-size:16px;font-weight:650;color:#fff;background:var(--accent);border:none;border-radius:12px;
        padding:15px 36px;cursor:pointer;transition:all .14s;box-shadow:0 6px 18px rgba(192,20,31,.24);}
   #startbtn:hover{background:#a5101a;transform:translateY(-2px);box-shadow:0 9px 22px rgba(192,20,31,.30);}
-  .intro-note{font-size:12px;color:var(--muted);margin:16px 0 0;letter-spacing:.03em;}
+  .intro-note{font-size:12px;color:var(--muted);margin:16px 0 0;letter-spacing:.03em;text-align:left;}
   .aboutwrap{position:relative;display:inline-block;vertical-align:middle;}
   .aboutbtn{color:#0a7a63;cursor:help;font-size:15px;line-height:1;}
   .aboutinfo{display:none;position:absolute;bottom:150%%;left:50%%;transform:translateX(-50%%);width:430px;max-width:88vw;
@@ -448,13 +452,19 @@ html = """<!DOCTYPE html>
     <div id="progress"></div>
   </header>
   <div id="intro">
-    <canvas id="introcv"></canvas>
-    <div id="introlegend"></div>
-    <p class="intro-cap">The major dialect groups of Great Britain</p>
-    <p class="intro-lead">How you say a few everyday words &mdash; and what you call bread, your evening meal, or a splinter &mdash; quietly gives away where in Britain you&rsquo;re from.</p>
-    <p class="intro-body">This short quiz asks how <i>you</i> speak. After each answer a heat map lights up, showing where in the British Isles that feature is common &mdash; all drawn from real published dialect surveys. Work through them and see which corner of the map your speech belongs to.</p>
-    <button id="startbtn">Start the quiz &rarr;</button>
-    <p class="intro-note"><span class="aboutwrap"><span class="aboutbtn">&#9432;</span><span class="aboutinfo">This is a pixel-art version of the British dialect map. It was made by <b>Alan Levita</b>, a Cambridge Linguistics graduate interning at the Intellectual Forum (IF) at Jesus College, together with <b>Prof. Bert Vaux</b> of King&rsquo;s College, Cambridge. Bert&rsquo;s research was the basis for the original <i>New York Times</i> dialect quiz, and the IF funds the project.<br><br>A custom algorithm uses your answers to estimate roughly where you&rsquo;re from. All the maps were redrawn by hand in a pixel-art style, based on isoglosses from published research on British dialects.</span></span> Powered by the Intellectual Forum at Jesus College, University of Cambridge</p>
+    <div class="intro-left">
+      <div class="intro-title">The British Dialect Quiz</div>
+      <div class="intro-sub">Answer a few questions, see where each answer places you on the map.</div>
+      <canvas id="introcv"></canvas>
+      <div id="introlegend"></div>
+      <p class="intro-cap">The major dialect groups of Great Britain</p>
+    </div>
+    <div class="intro-right">
+      <p class="intro-lead">How you say a few everyday words, and what you call bread, your evening meal, or a splinter, quietly gives away where in Britain you&rsquo;re from.</p>
+      <p class="intro-body">This short quiz asks how <i>you</i> speak. After each answer a heat map lights up, showing where in the British Isles that feature is common, all drawn from published dialect research. Work through them and see which corner of the map your speech belongs to.</p>
+      <button id="startbtn">Start the quiz &rarr;</button>
+      <p class="intro-note"><span class="aboutwrap"><span class="aboutbtn">&#9432;</span><span class="aboutinfo">This is a pixel-art version of the British dialect map. It was made by <b>Alan Levita</b>, a Cambridge Linguistics graduate interning at the Intellectual Forum (IF) at Jesus College, together with <b>Prof. Bert Vaux</b> of King&rsquo;s College, Cambridge. Bert&rsquo;s research was the basis for the original <i>New York Times</i> dialect quiz, and the IF funds the project.<br><br>A custom algorithm uses your answers to estimate roughly where you&rsquo;re from. All the maps were redrawn by hand in a pixel-art style, based on isoglosses from published research on British dialects.</span></span> Powered by the Intellectual Forum at Jesus College, University of Cambridge</p>
+    </div>
   </div>
   <div id="stage">
     <div id="left">
@@ -869,6 +879,7 @@ function drawMini(){
 }
 function startQuiz(){
   document.getElementById("intro").style.display="none";
+  document.querySelector("header").style.display="";     // show the title bar during the quiz
   document.getElementById("progresswrap").style.display="";
   document.getElementById("progress").style.display="";
   document.getElementById("stage").style.display="flex";
@@ -876,7 +887,8 @@ function startQuiz(){
   render();
 }
 function showIntro(){
-  document.getElementById("intro").style.display="";
+  document.getElementById("intro").style.display="flex";
+  document.querySelector("header").style.display="none"; // landing has its own title in the left panel
   document.getElementById("progresswrap").style.display="none";
   document.getElementById("progress").style.display="none";
   document.getElementById("stage").style.display="none";
