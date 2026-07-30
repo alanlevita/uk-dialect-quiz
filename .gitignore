@@ -1,0 +1,30 @@
+# Local source assets & scratch files: kept on disk for reference and rebuilding,
+# but NOT published to the website (keeps the live site lean, and avoids putting
+# third-party research figures online). The quiz's own maps are generated into
+# index.html from britain_pixel_data.json, so none of these are needed to run it.
+
+# original research map images
+foot_strut_map.png
+bread_isogloss.png
+tea-vs-dinner.png
+book-spook.png
+give-it-me.png
+dialect-map.jpg
+trap-bath.webp
+splinter-variant-map.webp
+*.ppm
+
+# reference data & geometry
+*.csv
+*.geojson
+
+# old / generated pages & helper scripts
+britain.html
+map.html
+quiz.html
+britain.png
+map.png
+map.py
+build_interactive.py
+build_photo_map.py
+footstrut_real.py
