@@ -17,8 +17,12 @@
 #    decode of every panel.
 
 import json
+import base64
 import numpy as np
 from scipy import ndimage
+
+# ice-lolly photo, embedded so the page stays self-contained
+popsicle_uri = "data:image/avif;base64," + base64.b64encode(open("popsicle-image.avif", "rb").read()).decode()
 
 with open("britain_pixel_data.json") as f:
     d = json.load(f)
@@ -190,9 +194,36 @@ SPELK = mk(4, [(["Berwickshire", "Roxburghshire", "Selkirkshire", "Peeblesshire"
 SPELL = mk(4, None,
     {"Lancashire": 32, "Cheshire": 26, "Yorkshire": 24, "Cumberland": 22, "Westmorland": 22,
      "Derbyshire": 18, "Flintshire": 18, "Durham": 16})
-SHIVER = mk(3, [(EANG, 15)],
-    {"Norfolk": 18, "Suffolk": 18, "Cambridgeshire": 13, "Essex": 12, "Cornwall": 10, "Devon": 9})
-SLIVER = mk(8, [(SCOT, 12)], {"Cornwall": 11, "Devon": 11, "Yorkshire": 10})
+# shiver: SOLELY East Anglia, peaked hard on Norfolk (Norwich) so it's the one
+# city that reads "shiver"; near-zero everywhere else.
+SHIVER = mk(1, None, {"Norfolk": 52, "Suffolk": 24, "Cambridgeshire": 9})
+# sliver: the SOUTH EAST / Home Counties word — Essex core, spreading through
+# Hertfordshire/Middlesex/Cambridgeshire and down into Surrey/Kent/Sussex
+# (per splinter-variant-map.webp, the orange region around & NE of London).
+SLIVER = mk(2, None, {"Essex": 54, "Hertfordshire": 42, "Middlesex": 36, "Cambridgeshire": 30,
+                      "Surrey": 30, "Kent": 24, "Sussex": 20, "Bedfordshire": 24, "Buckinghamshire": 16})
+# "Give it me" (alternative double-object dative): % who accept it. Strongest in the
+# North West + N Midlands (Manchester/Cheshire/Staffs/Derbys/S.Yorks), high in the
+# West & East Midlands, thinning fast to the NE (York 56, Teesside 41, Newcastle 25)
+# and low in the South, Scotland & Wales. From MacKenzie, Bailey & Turton 2022 (Map 12).
+GIVEITME = mk(14, [(SCOT, 12), (SWALES, 18), (SE_ENG, 18), (EANG, 20)],
+    {"Lancashire": 82, "Cheshire": 82, "Staffordshire": 78, "Derbyshire": 78,
+     "Nottinghamshire": 74, "Leicestershire": 72, "Rutland": 58, "Lincolnshire": 48,
+     "Northamptonshire": 46, "Warwickshire": 66, "Worcestershire": 66, "Shropshire": 70,
+     "Herefordshire": 56, "Gloucestershire": 48, "Yorkshire": 64,
+     "Cumberland": 48, "Westmorland": 54, "Durham": 38, "Northumberland": 24,
+     "Flintshire": 60, "Denbighshire": 56, "Caernarfonshire": 48, "Anglesey": 42,
+     "Merionethshire": 46, "Montgomeryshire": 48, "Radnorshire": 30,
+     "Oxfordshire": 32, "Buckinghamshire": 19, "Hertfordshire": 19, "Bedfordshire": 24,
+     "Somerset": 44, "Devon": 42, "Cornwall": 30, "Dorset": 26, "Wiltshire": 30,
+     "Huntingdonshire": 24, "Cambridgeshire": 22, "Argyllshire": 24, "Dunbartonshire": 22})
+# ice lolly (the standard nationwide term) vs lolly ice (the famous Merseyside /
+# Liverpool 'Scouse' reversal). No published map to hand -> approximated from the
+# well-known Scouse distribution. NB: Liverpool & Manchester are both historic
+# Lancashire, so the grid can't fully isolate Merseyside from Greater Manchester.
+# ice lolly is the national word (near-universal); lolly ice is a tight Liverpool /
+# Merseyside pocket (see LOLLYICE point-blob below). Together they blanket the UK.
+ICELOLLY = mk(85, None, {})
 SPLINTER = mk(66, None,
     {"Northumberland": 28, "Durham": 32, "Cumberland": 46, "Westmorland": 50,
      "Norfolk": 52, "Suffolk": 52, "Lancashire": 58, "Yorkshire": 60})
@@ -214,13 +245,28 @@ def grid_json(p):
             for r in range(H)]
 
 
+# a localized hotspot centred on grid coordinates (not a whole county) — used for
+# lolly ice, which is specific to Liverpool/Merseyside, not all of Lancashire.
+def point_blob(points, sigma):
+    ys, xs = np.mgrid[0:H, 0:W]
+    v = np.zeros((H, W))
+    for col, row, peak in points:
+        v = np.maximum(v, peak * np.exp(-(((xs - col) ** 2 + (ys - row) ** 2) / (2.0 * sigma ** 2))))
+    return np.where(land, v / 100.0, 0.0)
+
+
 grids_all = {"q1": grid_json(q1), "tvd": grid_json(surface(TEA)),
+             "giveitme": grid_json(surface(GIVEITME)),
              "bookspook": grid_json(surface(BOOKSPOOK)),
              # store as P(rhyme = short a) so "yes, they rhyme" -> North (matches the option)
              "trapbath": grid_json(1 - surface(TRAPBATH)),
              "spelk": grid_json(surface(SPELK)), "spell": grid_json(surface(SPELL)),
              "shiver": grid_json(surface(SHIVER)), "sliver": grid_json(surface(SLIVER)),
-             "splinter": grid_json(surface(SPLINTER))}
+             "splinter": grid_json(surface(SPLINTER)),
+             "icelolly": grid_json(surface(ICELOLLY)),
+             # lolly ice: Liverpool/Merseyside + a North Wales coast cluster (Flintshire/
+             # Denbighshire), which shares the Merseyside form; NOT Manchester.
+             "lollyice": grid_json(point_blob([(50.7, 91.3, 88), (47.8, 95.0, 76)], 3.0))}
 for term, vm in BREAD.items():
     grids_all[term] = grid_json(surface(vm))
 
@@ -253,7 +299,7 @@ landj = [[bool(land[r][c]) for c in range(W)] for r in range(H)]
 
 CITY_LL = {"London", "Manchester", "Birmingham", "Leeds", "Liverpool", "Sheffield",
            "Bristol", "Newcastle", "Nottingham", "Cardiff", "Edinburgh", "Glasgow",
-           "Aberdeen", "York"}
+           "Aberdeen", "York", "Norwich", "Cambridge", "Exeter"}
 cities = [{"name": n, "col": co, "row": ro} for n, co, ro in d["cities"] if n in CITY_LL]
 
 # ---- regions, for the "your answer matches X" readout ----
@@ -307,19 +353,29 @@ html = """<!DOCTYPE html>
   *{box-sizing:border-box;}
   html,body{margin:0;min-height:100%%;}
   body{background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,sans-serif;}
-  #app{max-width:1060px;margin:0 auto;padding:24px 20px 48px;}
+  #app{max-width:1060px;margin:0 auto;padding:20px 20px 16px;position:relative;}
+  #qimg{display:block;width:150px;height:150px;object-fit:cover;border-radius:14px;margin:2px 0 14px;box-shadow:0 4px 14px rgba(0,0,0,.14);}
+  .sliderbox{margin:20px 0 8px;}
+  .sliderbox input[type=range]{width:100%%;accent-color:var(--accent);height:6px;cursor:pointer;}
+  .slabels{display:flex;justify-content:space-between;align-items:flex-start;font-size:12px;color:var(--muted);margin-top:10px;line-height:1.35;}
+  .slabels .sval{font-size:26px;font-weight:750;color:var(--accent);align-self:center;}
+  #restart{position:absolute;top:8px;right:16px;display:inline-flex;align-items:center;gap:7px;
+       font-size:13.5px;font-weight:650;color:#fff;background:var(--accent);
+       border:none;border-radius:10px;padding:10px 18px;cursor:pointer;z-index:20;box-shadow:0 3px 10px rgba(192,20,31,.22);}
+  #restart:hover{background:#a5101a;}
+  #restart .ricon{font-size:30px;line-height:1;display:flex;align-items:center;}
   header{text-align:center;margin-bottom:6px;}
   .site-title{font-size:27px;font-weight:750;letter-spacing:-.015em;margin:0 0 3px;}
   .site-sub{font-size:13px;color:var(--muted);margin:0 0 18px;}
   .progress-wrap{max-width:420px;margin:0 auto 7px;height:6px;background:#e9e4da;border-radius:99px;overflow:hidden;}
   .progress-bar{height:100%%;width:0;background:var(--accent);border-radius:99px;transition:width .3s ease;}
-  #progress{font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);text-align:center;margin-bottom:26px;}
-  #stage{display:flex;gap:44px;align-items:flex-start;justify-content:center;flex-wrap:wrap;}
-  #left{flex:0 0 380px;max-width:380px;}
+  #progress{font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);text-align:center;margin-bottom:14px;}
+  #stage{display:flex;gap:30px;align-items:flex-start;justify-content:center;flex-wrap:wrap;}
+  #left{flex:0 0 340px;max-width:340px;}
   #qtext{font-size:24px;line-height:1.3;margin:0 0 7px;font-weight:650;}
   #qtag{font-size:12px;color:var(--muted);margin-bottom:20px;}
   #qtag.real{color:#0a7a63;} #qtag::before{content:"\\25CF  ";font-size:9px;vertical-align:middle;}
-  .opt{display:flex;align-items:center;gap:11px;width:100%%;margin:9px 0;padding:14px 16px;font-size:15px;text-align:left;
+  .opt{display:flex;align-items:center;gap:11px;width:100%%;margin:6px 0;padding:11px 15px;font-size:15px;text-align:left;
        background:var(--card);border:1.5px solid var(--line);border-radius:12px;cursor:pointer;transition:all .12s;color:var(--ink);}
   .opt:not(:disabled):hover{border-color:var(--accent);transform:translateY(-1px);box-shadow:0 4px 14px rgba(0,0,0,.07);}
   .opt.sel{border-color:var(--accent);background:#fdf0f0;}
@@ -338,21 +394,26 @@ html = """<!DOCTYPE html>
   #back:hover{border-color:#bdb7ab;background:#f2ede4;}
   #startover{font-size:14px;color:#fff;background:var(--ink);border:none;border-radius:9px;padding:9px 16px;cursor:pointer;}
   #startover:hover{background:#000;}
-  #right{flex:0 0 auto;text-align:center;max-width:480px;}
-  #rtitle{font-size:14px;line-height:1.45;margin-bottom:10px;min-height:2.4em;color:var(--muted);}
+  #right{flex:0 0 auto;text-align:center;max-width:360px;}
+  #rtitle{font-size:14px;line-height:1.4;margin-bottom:6px;min-height:2em;color:var(--muted);}
   #rtitle b{color:var(--ink);}
   #out{position:relative;display:inline-block;}
-  canvas{display:block;cursor:pointer;max-height:64vh;max-width:86vw;width:auto;height:auto;border-radius:6px;}
-  #rprompt{color:#bbb;font-size:14px;padding:90px 44px;border:2px dashed #e2ddd3;border-radius:14px;}
-  #match{font-size:17px;margin-top:14px;min-height:1.3em;font-weight:600;} #match b{color:var(--accent);}
-  #legend{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);justify-content:center;margin-top:10px;}
+  canvas{display:block;cursor:pointer;max-height:52vh;max-width:86vw;width:auto;height:auto;border-radius:6px;}
+  #rprompt{color:#bbb;font-size:14px;padding:60px 44px;border:2px dashed #e2ddd3;border-radius:14px;}
+  #match{font-size:16px;margin-top:8px;min-height:1.3em;font-weight:600;} #match b{color:var(--accent);}
+  #legend{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);justify-content:center;margin-top:6px;}
   #legend .bar{width:150px;height:12px;border-radius:3px;
        background:linear-gradient(to right,rgb(15,77,209),rgb(222,222,230),rgb(209,15,28));border:1px solid #ccc;}
-  #infobtn{font-size:13px;color:#0a7a63;cursor:pointer;margin-top:10px;display:inline-block;} #infobtn:hover{text-decoration:underline;}
-  #info{max-width:440px;margin:9px auto 0;font-size:13px;line-height:1.55;color:#333;text-align:left;
-        background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 14px;}
+  #infowrap{position:relative;display:inline-block;margin-top:6px;}
+  #infobtn{font-size:13px;color:#0a7a63;cursor:help;} #infobtn:hover{text-decoration:underline;}
+  #info{display:none;position:absolute;bottom:150%%;left:50%%;transform:translateX(-50%%);width:340px;max-width:82vw;
+        font-size:12.5px;line-height:1.5;color:#333;text-align:left;background:var(--card);border:1px solid var(--line);
+        border-radius:10px;padding:11px 13px;box-shadow:0 8px 24px rgba(0,0,0,.16);z-index:40;}
+  #info::before{content:"";position:absolute;top:100%%;left:50%%;transform:translateX(-50%%);
+        border:7px solid transparent;border-top-color:var(--card);}
+  #infowrap:hover #info{display:block;}
   #info .src{color:#aaa;font-size:11px;margin-top:8px;} #info .isep{border:none;border-top:1px solid #eee;margin:9px 0;}
-  #detail{font-size:14px;color:#444;margin-top:10px;min-height:1.4em;} #detail .ipa{font-size:19px;color:#111;margin:0 6px;letter-spacing:.5px;}
+  #detail{font-size:13px;color:#444;margin-top:6px;min-height:1.2em;} #detail .ipa{font-size:18px;color:#111;margin:0 6px;letter-spacing:.5px;}
   .tip{position:absolute;background:var(--ink);color:#fff;padding:6px 10px;border-radius:6px;font-size:12px;
        line-height:1.35;white-space:nowrap;pointer-events:none;opacity:0;transform:translate(-50%%,-118%%);
        transition:opacity .1s;} .tip b{font-weight:600;} .tip small{opacity:.82;}
@@ -369,8 +430,17 @@ html = """<!DOCTYPE html>
        padding:15px 36px;cursor:pointer;transition:all .14s;box-shadow:0 6px 18px rgba(192,20,31,.24);}
   #startbtn:hover{background:#a5101a;transform:translateY(-2px);box-shadow:0 9px 22px rgba(192,20,31,.30);}
   .intro-note{font-size:12px;color:var(--muted);margin:16px 0 0;letter-spacing:.03em;}
+  .aboutwrap{position:relative;display:inline-block;vertical-align:middle;}
+  .aboutbtn{color:#0a7a63;cursor:help;font-size:15px;line-height:1;}
+  .aboutinfo{display:none;position:absolute;bottom:150%%;left:50%%;transform:translateX(-50%%);width:430px;max-width:88vw;
+       font-size:12.5px;line-height:1.6;color:#333;text-align:left;background:var(--card);border:1px solid var(--line);
+       border-radius:10px;padding:14px 16px;box-shadow:0 10px 28px rgba(0,0,0,.18);z-index:60;letter-spacing:normal;}
+  .aboutinfo::after{content:"";position:absolute;top:100%%;left:50%%;transform:translateX(-50%%);
+       border:7px solid transparent;border-top-color:var(--card);}
+  .aboutwrap:hover .aboutinfo{display:block;}
 </style></head><body>
 <div id="app">
+  <button id="restart" style="display:none"><span class="ricon">&#10227;</span> Restart quiz</button>
   <header>
     <div class="site-title">The British Dialect Quiz</div>
     <div class="site-sub">Answer a few questions &mdash; see where each answer places you on the map.</div>
@@ -384,11 +454,12 @@ html = """<!DOCTYPE html>
     <p class="intro-lead">How you say a few everyday words &mdash; and what you call bread, your evening meal, or a splinter &mdash; quietly gives away where in Britain you&rsquo;re from.</p>
     <p class="intro-body">This short quiz asks how <i>you</i> speak. After each answer a heat map lights up, showing where in the British Isles that feature is common &mdash; all drawn from real published dialect surveys. Work through them and see which corner of the map your speech belongs to.</p>
     <button id="startbtn">Start the quiz &rarr;</button>
-    <p class="intro-note">Powered by the Intellectual Forum at Jesus College, University of Cambridge</p>
+    <p class="intro-note"><span class="aboutwrap"><span class="aboutbtn">&#9432;</span><span class="aboutinfo">This is a pixel-art version of the British dialect map, made by <b>Alan Levita</b>, a Cambridge Linguistics graduate now interning at the Intellectual Forum (IF) at Jesus College. He built it with <b>Prof. Bert Vaux</b> of King&rsquo;s College, Cambridge, whose research was the basis for the original <i>New York Times</i> dialect quiz. The whole project is funded by the IF.<br><br>The quiz runs a custom algorithm to work out roughly where you&rsquo;re from. Each map was redrawn by hand in a pixel-art style, with the isoglosses taken from published research on British dialects.</span></span> Powered by the Intellectual Forum at Jesus College, University of Cambridge</p>
   </div>
   <div id="stage">
     <div id="left">
       <h1 id="qtext"></h1>
+      <img id="qimg" style="display:none" alt="">
       <div id="qtag"></div>
       <div id="opts"></div>
       <div class="hint" id="hint" style="display:none"></div>
@@ -405,8 +476,7 @@ html = """<!DOCTYPE html>
         <div class="tip" id="tip"></div></div>
       <div id="match"></div>
       <div id="legend" style="display:none"><span>uncommon</span><span class="bar"></span><span>common</span></div>
-      <div id="infobtn" style="display:none"></div>
-      <div id="info" style="display:none"></div>
+      <div id="infowrap" style="display:none"><span id="infobtn"></span><div id="info"></div></div>
       <div id="detail"></div>
     </div>
   </div>
@@ -417,10 +487,11 @@ const grids=%s;
 const land=%s,cities=%s,cg=%s,names=%s;
 const regionGrid=%s,regionNames=%s;
 const dialectGrid=%s,dialectColors=%s;
+const POPSICLE_IMG=%s;
 const QUESTIONS=[
   // metric "pct": a clean binary the paper reports as proportions -> show a percent.
   // ipa:true enables the click-a-city foot-strut IPA readout (foot-strut only).
-  {id:"q1",text:"Do <i>foot</i> and <i>strut</i> rhyme for you?",tag:"real data",real:true,metric:"pct",
+  {id:"q1",text:"Do <i>foot</i> and <i>cut</i> rhyme for you?",tag:"real data",real:true,metric:"pct",
    ipa:true,info:"footstrut",infoLabel:"the foot&ndash;strut split",
    opts:[{label:"Yes, they rhyme",v:1,word:"rhyme"},{label:"No, they sound different",v:0,word:"split"}]},
   {id:"bookspook",text:"Do <i>book</i> and <i>spook</i> rhyme for you?",tag:"real data",real:true,metric:"pct",
@@ -434,6 +505,8 @@ const QUESTIONS=[
   {id:"tvd",text:"What do you call your evening meal?",tag:"real data",real:true,metric:"pct",
    info:"tvd",infoLabel:"tea vs dinner",
    opts:[{label:"Tea",v:1,word:"say tea"},{label:"Dinner",v:0,word:"say dinner"}]},
+  {id:"giveitme",text:"How natural does &ldquo;<i>Give it me</i>&rdquo; sound to you (for <i>give it to me</i>)?",tag:"real data",real:true,metric:"pct",
+   slider:true,grid:"giveitme",sliderLabels:["Sounds wrong","Sounds fine"],info:"giveitme",infoLabel:"the &lsquo;give it me&rsquo; dative"},
   {id:"splinter",text:"What do you call a small piece of wood stuck in your skin?",tag:"",real:true,multi:true,metric:"prevalence",
    info:"splinter",infoLabel:"words for a splinter",
    opts:[
@@ -458,6 +531,17 @@ const QUESTIONS=[
      {label:"Bun",v:"bun",term:"bun",grid:"bun"},
      {label:"Roll",v:"roll",term:"roll",grid:"roll"},
      {label:"I don&rsquo;t have a word for this",v:"none",term:"no word for this",grid:"none_bread",excl:true,none:true}
+   ]},
+  // single-select lexical with a photo. "ice lolly" is standard; "lolly ice" is the
+  // Merseyside reversal. "other"/"no word" don't map to a region (inconclusive).
+  {id:"lolly",text:"Would you ever call this frozen treat an <i>ice lolly</i> or a <i>lolly ice</i>?",
+   img:POPSICLE_IMG,tag:"",real:true,metric:"prevalence",info:"lolly",infoLabel:"ice lolly vs lolly ice",
+   opts:[
+     {label:"Ice lolly",v:"icelolly",term:"ice lolly",grid:"icelolly"},
+     {label:"Lolly ice",v:"lollyice",term:"lolly ice",grid:"lollyice"},
+     {label:"I use both interchangeably",v:"both",term:"both",grid:"lollyice"},
+     {label:"Other term (ice pop, popsicle, etc.)",v:"other",term:"another term",none:true},
+     {label:"I have no word for this",v:"none",term:"no word for this",none:true}
    ]}
 ];
 // foot-strut rate is still only an estimate -> don't fake precision at the extremes
@@ -476,9 +560,13 @@ const ETYM={
   tvd:"<b>tea vs dinner</b> &mdash; the name for the evening meal. <i>Tea</i> is the northern (and traditionally working-class) term; <i>dinner</i> the southern one, and historically the &lsquo;U&rsquo;/upper-class usage (Ross, 1954). So it carries a class edge as well as a regional one.",
   bookspook:"<b>book vs spook</b> &mdash; in some accents the <i>-ook</i> words (book, cook, look) keep the old long vowel /u&#720;/, so <i>book</i> is [bu&#720;k] and rhymes with <i>spook</i> &mdash; putting it in the GOOSE set rather than FOOT. Traditional in the North East and Stoke (and once Liverpool); Scotland has no foot&ndash;goose distinction at all.",
   trapbath:"<b>The trap&ndash;bath split</b> &mdash; in the 18th century southern English lengthened the <i>a</i> in a set of words (<i>bath, grass, last, dance</i>) to /&#593;&#720;/, splitting them from TRAP words (<i>cat, trap</i>). The North, Wales and Scotland kept the short /a/ &mdash; so a northerner says [ba&#952;], a southerner [b&#593;&#720;&#952;]. It&rsquo;s one of the sharpest north&ndash;south markers.",
-  splinter:"<b>Words for a splinter</b> of wood in the skin. <b>Splinter</b> is the standard nationwide; <b>spelk</b> (from Old Norse / Old English <i>spelc</i>) belongs to the North East &amp; the Borders; <b>spell</b> is northern; <b>shiver</b> is East Anglian; <b>sliver</b> is scattered."
+  splinter:"<b>Words for a splinter</b> of wood in the skin. <b>Splinter</b> is the standard nationwide; <b>spelk</b> (from Old Norse / Old English <i>spelc</i>) belongs to the North East &amp; the Borders; <b>spell</b> is northern; <b>shiver</b> is East Anglian; <b>sliver</b> is a South East word.",
+  giveitme:"<b>&lsquo;Give it me&rsquo;</b> &mdash; the &lsquo;alternative double-object&rsquo; dative: the theme (<i>it</i>) comes before the goal (<i>me</i>) with no <i>to</i> &mdash; <i>give it me</i> rather than <i>give it to me</i> or <i>give me it</i>. It&rsquo;s a North West &amp; Midlands feature (strongest around Manchester and the Potteries), thinning towards the North East and the South.",
+  lolly:"<b>Ice lolly vs lolly ice</b> &mdash; <i>ice lolly</i> is the standard British term; <i>lolly ice</i> (the words reversed) is the well-known Merseyside / Liverpool (&lsquo;Scouse&rsquo;) form. Further afield you&rsquo;ll hear <i>ice pop</i> (Ireland, Scotland) or <i>popsicle</i> (North America)."
 };
-const ETYM_SRC="Etymology from Wiktionary.";
+// only etymology sources are cited (the maps are our own recreations, not originals)
+const ETYM_SRC="Wiktionary";
+const SRC={ splinter:"Wiktionary" };
 // lexical prevalence: a relative band, no misleading headcount
 function band(v){return v>=0.5?"the main word(s) here":v>=0.3?"common here":v>=0.15?"one of several here":"rarely used here";}
 // for the "no word" negative map: high v = the words are absent here
@@ -486,12 +574,17 @@ function bandNone(v){return v>=0.5?"few people have a word":v>=0.3?"a word is le
 let idx=0; const answers={}; const revealedSet=new Set();
 const cv=document.getElementById("cv"),cx=cv.getContext("2d");cv.width=W*CELL;cv.height=H_*CELL;
 let SHOWN=null;
+// national average of each map (over land), so hover can spot LOCALLY distinctive words
+const gridMean={};
+for(const k in grids){let s=0,n=0;const g=grids[k];
+  for(let r=0;r<H_;r++)for(let c=0;c<W;c++){const v=g[r][c];if(v!=null){s+=v;n++;}}
+  gridMean[k]=n?s/n:1e-6;}
 
 function clearRight(prompt){
   document.getElementById("rprompt").style.display="";cv.style.display="none";
   document.getElementById("legend").style.display="none";document.getElementById("detail").innerHTML="";
   document.getElementById("match").innerHTML="";
-  document.getElementById("infobtn").style.display="none";document.getElementById("info").style.display="none";
+  document.getElementById("infowrap").style.display="none";
   document.getElementById("rtitle").innerHTML=prompt;
 }
 function render(){
@@ -506,7 +599,7 @@ function render(){
   // back is always available: on the first question it returns to the landing page
   back.style.display="inline";
   back.textContent=(idx===0)?"\\u2190 intro":"\\u2190 back";
-  document.getElementById("startover").style.display=atEnd?"inline-block":"none";
+  document.getElementById("startover").style.display="none";   // redundant with the top "Restart quiz"
   next.style.display="none"; hint.style.display="none"; tag.style.display="none";
   if(atEnd){
     prog.textContent="All questions answered";
@@ -518,23 +611,39 @@ function render(){
   const q=QUESTIONS[idx];
   prog.textContent="Question "+(idx+1)+" of "+QUESTIONS.length;
   qt.style.display="";qt.innerHTML=q.text; box.style.display="";box.innerHTML="";done.style.display="none";
+  const qimg=document.getElementById("qimg");
+  if(q.img){ qimg.src=q.img; qimg.style.display="block"; } else { qimg.style.display="none"; }
   const ans=answers[q.id];
-  const isRevealed=revealedSet.has(q.id);
   const contLabel=(idx===QUESTIONS.length-1)?"Finish →":"Continue →";
   const answered=q.multi?(Array.isArray(ans)&&ans.length>0):(ans!==undefined);
-  // ---- options: editable until you reveal, then LOCKED ----
-  if(q.multi){
+  const isRevealed=revealedSet.has(q.id) && answered;
+  // ---- options: ALWAYS editable (so Back lets you change answers), BUT changing the
+  // selection hides the map — you only ever see it by pressing "See map". ----
+  if(q.slider){
+    // 1-5 acceptability slider
+    hint.innerHTML=isRevealed?"":"Drag the slider, then press &ldquo;See map&rdquo;.";
+    const v=(ans!==undefined)?ans:3;
+    const wrap=document.createElement("div"); wrap.className="sliderbox";
+    wrap.innerHTML="<input type='range' id='slider' min='1' max='5' step='1' value='"+v+"'>"+
+      "<div class='slabels'><span>1<br>"+q.sliderLabels[0]+"</span>"+
+      "<span class='sval'>"+(ans!==undefined?v:"")+"</span>"+
+      "<span style='text-align:right'>5<br>"+q.sliderLabels[1]+"</span></div>";
+    box.appendChild(wrap);
+    const sl=wrap.querySelector("#slider"), sval=wrap.querySelector(".sval");
+    sl.oninput=()=>{ sval.textContent=sl.value; };
+    sl.onchange=()=>{ answers[q.id]=+sl.value; revealedSet.delete(q.id); render(); };
+  } else if(q.multi){
     const selected=new Set(Array.isArray(ans)?ans:[]);
-    hint.textContent=isRevealed?"":"Select all that apply, then see your map.";
+    hint.innerHTML=isRevealed?"":"Select all that apply, then press &ldquo;See map&rdquo;.";
     q.opts.forEach(o=>{const bt=document.createElement("button");
       bt.className="opt"+(selected.has(o.v)?" sel":"");
       bt.innerHTML="<span class='box'>"+(selected.has(o.v)?"&#10003;":"")+"</span>"+o.label;
-      if(isRevealed){ bt.disabled=true; }
-      else bt.onclick=()=>{ let s=new Set(Array.isArray(answers[q.id])?answers[q.id]:[]);
+      bt.onclick=()=>{ let s=new Set(Array.isArray(answers[q.id])?answers[q.id]:[]);
         if(o.excl){ if(s.has(o.v)) s.clear(); else s=new Set([o.v]); }   // "no word" is exclusive
         else { if(s.has(o.v))s.delete(o.v); else s.add(o.v);
           q.opts.filter(x=>x.excl).forEach(x=>s.delete(x.v)); }
         if(s.size) answers[q.id]=q.opts.filter(x=>s.has(x.v)).map(x=>x.v); else delete answers[q.id];
+        revealedSet.delete(q.id);   // selection changed -> hide map until "See map" pressed
         render(); };
       box.appendChild(bt);});
   } else {
@@ -542,8 +651,7 @@ function render(){
     q.opts.forEach(o=>{const bt=document.createElement("button");
       bt.className="opt"+(ans===o.v?" sel":"");
       bt.innerHTML=o.label;
-      if(isRevealed){ bt.disabled=true; }
-      else bt.onclick=()=>{ answers[q.id]=o.v; render(); };   // SELECT only; revealing is a 2nd step
+      bt.onclick=()=>{ answers[q.id]=o.v; revealedSet.delete(q.id); render(); };   // change -> hide map until "See map"
       box.appendChild(bt);});
   }
   hint.style.display="block";   // always reserve this row so the buttons never jump
@@ -558,16 +666,13 @@ function render(){
     next.onclick=()=>{ if(answered){revealedSet.add(q.id);render();} };
   }
 }
-// clear a question completely (answer + revealed) so it starts fresh
-function wipe(qid){ delete answers[qid]; revealedSet.delete(qid); }
 document.getElementById("back").onclick=()=>{
-  if(idx<QUESTIONS.length) wipe(QUESTIONS[idx].id);   // clear the question we're leaving
-  if(idx===0){ showIntro(); return; }                 // first question -> landing page
-  idx--;
-  wipe(QUESTIONS[idx].id);                             // and clear the one we land on
-  render();
+  if(idx===0){ showIntro(); return; }   // first question -> landing page
+  idx--; render();                      // go back one and SHOW that question's last map (keep its answer)
 };
-document.getElementById("startover").onclick=()=>{idx=0;revealedSet.clear();for(const k in answers)delete answers[k];render();};
+function restartQuiz(){ idx=0; revealedSet.clear(); for(const k in answers)delete answers[k]; showIntro(); }
+document.getElementById("restart").onclick=restartQuiz;
+document.getElementById("startover").onclick=restartQuiz;
 
 function heat(t){t=Math.max(0,Math.min(1,t));
   const blue=[15,77,209],white=[222,222,230],red=[209,15,28];
@@ -594,6 +699,9 @@ function matchRegion(surf){
   // a genuinely strong regional signal -> name it (or the grouping)
   if(topMean>=0.40 && hot.length){
     const nm=hot.map(h=>h[0]);
+    // spread across both north and south and most regions -> it's basically nationwide
+    if(nm.length>=6 && NORTHSET.some(n=>nm.includes(n)) && SOUTHSET.some(n=>nm.includes(n)))
+      return "much of Britain";
     // if all three northern regions dominate -> "the North of England"
     if(NORTHSET.every(n=>nm.includes(n))) return "the North of England";
     if(nm.length<=3) return joinRegions(nm);
@@ -605,37 +713,63 @@ function matchRegion(surf){
   return "multiple regions ("+order.slice(0,3).map(i=>regionNames[i]).join(", ")+"&hellip;)";
 }
 
+// for the slider: place the user by matching their rating (0-1) to the region whose
+// average acceptance is closest to it (rate it high -> the high-acceptance regions).
+function matchByLevel(surf,target){
+  const sum=regionNames.map(()=>[0,0]);
+  for(let r=0;r<H_;r++)for(let c=0;c<W;c++){const g=regionGrid[r][c];if(g<0)continue;
+    const v=surf[r][c];if(v==null)continue;sum[g][0]+=v;sum[g][1]++;}
+  const mean=sum.map(([s,n])=>n?s/n:0);
+  const order=mean.map((v,i)=>i).sort((a,b)=>Math.abs(mean[a]-target)-Math.abs(mean[b]-target));
+  return regionNames[order[0]];
+}
+
 function drawMap(q,ans){
   document.getElementById("rprompt").style.display="none";cv.style.display="block";
   document.getElementById("legend").style.display="flex";
   const multi=Array.isArray(ans);
-  let sel, surf=[];
-  if(multi){
-    // MULTIPLE SELECT: layer the chosen maps on top of each other (per-pixel max
-    // = "where ANY of my words are common")
+  const isSlider=!!q.slider;
+  let sel, surf=[], incon=false;
+  if(isSlider){
+    // 1-5 rating -> show where people FEEL AS YOU DO: high rating leans to the
+    // acceptance map (NW/Midlands red); low rating leans to its inverse (red across
+    // the many places that reject it). The raw acceptance rate is kept for the hover.
+    sel=[{term:q.id,word:"acceptance"}];
+    const base=grids[q.grid]; const w=(ans-1)/4;   // 0=sounds wrong .. 1=sounds fine
+    for(let r=0;r<H_;r++){surf.push([]);for(let c=0;c<W;c++){
+      const b=base[r][c]; surf[r].push(b==null?null:(w*b+(1-w)*(1-b)));}}
+  } else if(multi){
+    // MULTIPLE SELECT: layer the chosen maps (per-pixel max = "where ANY are common")
     sel=ans.map(v=>q.opts.find(o=>o.v===v));
     for(let r=0;r<H_;r++){surf.push([]);for(let c=0;c<W;c++){
       if(!land[r][c]){surf[r].push(null);continue;}
       let m=0,any=false;
-      for(const o of sel){const val=grids[o.grid][r][c]; if(val!=null){any=true; if(val>m)m=val;}}
+      for(const o of sel){ if(!o.grid)continue; const val=grids[o.grid][r][c]; if(val!=null){any=true; if(val>m)m=val;}}
       surf[r].push(any?m:null);}}
+    incon = sel.length===1 && sel[0].none;
   } else {
     const opt=q.opts.find(o=>o.v===ans); sel=[opt];
-    const base=opt.grid?grids[opt.grid]:grids[q.id];
-    for(let r=0;r<H_;r++){surf.push([]);for(let c=0;c<W;c++){
-      surf[r].push(base[r][c]==null?null:(opt.grid?base[r][c]:(ans?base[r][c]:1-base[r][c])));}}
+    if(opt.grid){
+      const base=grids[opt.grid];
+      for(let r=0;r<H_;r++){surf.push([]);for(let c=0;c<W;c++){surf[r].push(base[r][c]);}}
+    } else if(grids[q.id]){   // binary pct question: flip for the "no" option
+      const base=grids[q.id];
+      for(let r=0;r<H_;r++){surf.push([]);for(let c=0;c<W;c++){
+        surf[r].push(base[r][c]==null?null:(ans?base[r][c]:1-base[r][c]));}}
+    } else {                  // option with no map (e.g. "other" / "no word") -> inconclusive
+      incon=true;
+      for(let r=0;r<H_;r++){surf.push([]);for(let c=0;c<W;c++){surf[r].push(null);}}
+    }
   }
-  const noneOnly = multi && sel.length===1 && sel[0].none;
-  SHOWN={q,ans,sel,surf,multi,noneOnly};
-  if(noneOnly){
-    document.getElementById("rtitle").innerHTML=
-      "You chose <b>no word for this</b><br><span style='color:#8a857c'>"+
-      "Red = where none of these words are common (there are almost none)</span>";
+  SHOWN={q,ans,sel,surf,multi,noneOnly:incon,incon,slider:isSlider,raw:isSlider?grids[q.grid]:null};
+  const rtitle=document.getElementById("rtitle");
+  if(isSlider){
+    rtitle.innerHTML="You rated it <b>"+ans+" / 5</b><br><span style='color:#8a857c'>Red = where people tend to feel the same &middot; hover for local acceptance</span>";
+  } else if(incon){
+    rtitle.innerHTML="You chose <b>&ldquo;"+(sel[0].term||"this")+"&rdquo;</b><br><span style='color:#8a857c'>This one doesn&rsquo;t map to a particular region</span>";
   } else {
-    const answerLabel = multi ? sel.map(o=>"&ldquo;"+o.term+"&rdquo;").join(", ")
-                              : "&ldquo;"+sel[0].label+"&rdquo;";
-    document.getElementById("rtitle").innerHTML=
-      "You chose <b>"+answerLabel+"</b><br><span style='color:#8a857c'>"+
+    const answerLabel = multi ? sel.map(o=>"&ldquo;"+o.term+"&rdquo;").join(", ") : "&ldquo;"+sel[0].label+"&rdquo;";
+    rtitle.innerHTML="You chose <b>"+answerLabel+"</b><br><span style='color:#8a857c'>"+
       (q.metric==="pct"?"Hover a city to see the approximate percentage"
                        :"Hover a city to see the word most likely used there")+"</span>";
   }
@@ -643,29 +777,29 @@ function drawMap(q,ans){
   for(let r=0;r<H_;r++)for(let c=0;c<W;c++){
     if(!land[r][c])continue;
     cx.fillStyle="#c9c9d2";cx.fillRect(c*CELL,r*CELL,CELL,CELL);
-    const [rr,gg,bb]=heat(surf[r][c]);cx.fillStyle="rgb("+rr+","+gg+","+bb+")";
-    cx.fillRect(c*CELL,r*CELL,CELL-GAP,CELL-GAP);
+    const v=surf[r][c];
+    const [rr,gg,bb]=(incon||v==null)?[214,214,220]:heat(v);
+    cx.fillStyle="rgb("+rr+","+gg+","+bb+")";cx.fillRect(c*CELL,r*CELL,CELL-GAP,CELL-GAP);
   }
   for(const ct of cities){const v=surf[ct.row|0]?surf[ct.row|0][ct.col|0]:null;
-    const [rr,gg,bb]=v!=null?heat(v):[200,200,205];
+    const [rr,gg,bb]=(incon||v==null)?[200,200,205]:heat(v);
     cx.beginPath();cx.arc((ct.col+0.5)*CELL,(ct.row+0.5)*CELL,5,0,7);
     cx.fillStyle="rgb("+rr+","+gg+","+bb+")";cx.fill();cx.lineWidth=2;cx.strokeStyle="#2b2b2b";cx.stroke();}
-  // "no word for this" doesn't place you anywhere -> say so, don't fake a region
-  document.getElementById("match").innerHTML= noneOnly
-    ? "<span style='color:#8a857c;font-weight:500'>Inconclusive &mdash; having no word for this doesn&rsquo;t point to a region.</span>"
+  document.getElementById("match").innerHTML=
+    (incon || (isSlider && ans===3))
+    ? "<span style='color:#8a857c;font-weight:500'>Inconclusive &mdash; this doesn&rsquo;t point to a particular region.</span>"
     : "&#9873; closest to: <b>"+matchRegion(surf)+"</b>";
   // (i) more info — resolved per question so it's never "undefined"
   let infoHTML="", infoLabel="", infoSrc="";
-  if(q.info){ infoHTML=ETYM[q.info]||""; infoLabel=q.infoLabel||""; }
+  if(q.info){ infoHTML=ETYM[q.info]||""; infoLabel=q.infoLabel||""; infoSrc=SRC[q.info]||""; }
   else if(q.multi){ const parts=sel.map(o=>ETYM[o.grid]).filter(Boolean);
     infoHTML=parts.join("<hr class='isep'>"); infoLabel="your word"+(sel.length>1?"s":""); infoSrc=ETYM_SRC; }
-  const infobtn=document.getElementById("infobtn"), info=document.getElementById("info");
-  if(infoHTML){ infobtn.style.display="inline-block"; infobtn.innerHTML="&#9432; about "+infoLabel;
-    info.innerHTML=infoHTML+(infoSrc?"<div class='src'>"+infoSrc+"</div>":""); info.style.display="none";
-    infobtn.onclick=()=>{info.style.display=info.style.display==="none"?"block":"none";};
-  } else { infobtn.style.display="none"; info.style.display="none"; }
+  const infowrap=document.getElementById("infowrap"), infobtn=document.getElementById("infobtn"), info=document.getElementById("info");
+  if(infoHTML){ infowrap.style.display="inline-block"; infobtn.innerHTML="&#9432; about "+infoLabel;
+    info.innerHTML=infoHTML+(infoSrc?"<div class='src'>Source: "+infoSrc+"</div>":"");   // shows on hover via CSS
+  } else { infowrap.style.display="none"; }
   document.getElementById("detail").innerHTML=q.ipa?
-    "Click a city to see the expected local IPA for <i>foot</i> vs <i>strut</i>":"";
+    "Click a city to see the expected local IPA for <i>foot</i> vs <i>cut</i>":"";
 }
 
 const tip=document.getElementById("tip");
@@ -677,18 +811,25 @@ cv.addEventListener("mousemove",(e)=>{
   if(best&&bd<=24){const v=SHOWN.surf[best.row|0]?SHOWN.surf[best.row|0][best.col|0]:null;
     const br=best.row|0,bc=best.col|0;
     let line;
-    if(SHOWN.q.metric==="pct"){ line=(v==null)?"&mdash;":fmtPct(v*100)+" "+SHOWN.sel[0].word; }
+    if(SHOWN.incon){ line="&mdash;"; }
+    else if(SHOWN.slider){ const rv=SHOWN.raw[br]?SHOWN.raw[br][bc]:null; line=(rv==null)?"&mdash;":fmtPct(rv*100)+" acceptance"; }
+    else if(SHOWN.q.metric==="pct"){ line=(v==null)?"&mdash;":fmtPct(v*100)+" "+SHOWN.sel[0].word; }
     else{
-      // lexical: name the variant(s) most likely used in THIS city, across all the
-      // question's words (so you can see e.g. barm in Manchester vs tea cake in Leeds)
-      const realOpts=SHOWN.q.opts.filter(o=>o.grid&&!o.none);
-      let b1=null,v1=-1,b2=null,v2=-1;
+      // lexical: show the MAIN word here (top absolute) AND, separately, the local/
+      // regional word — the variant that is unusually common here relative to its own
+      // national average (its "lift"). That surfaces low-frequency regional words like
+      // shiver (East Anglia) or spelk (NE) even when splinter dominates in raw numbers.
+      const seen=new Set();
+      const realOpts=SHOWN.q.opts.filter(o=>{ if(!o.grid||o.none||seen.has(o.grid))return false; seen.add(o.grid); return true; });
+      let main=null,mainV=-1, reg=null,bestLift=1.35;
       for(const o of realOpts){const gr=grids[o.grid][br]; const gv=gr?gr[bc]:null;
         if(gv==null)continue;
-        if(gv>v1){v2=v1;b2=b1;v1=gv;b1=o;} else if(gv>v2){v2=gv;b2=o;}}
-      if(!b1){ line="&mdash;"; }
-      else{ line="likely: <b>&ldquo;"+b1.term+"&rdquo;</b>";
-        if(b2&&v2>=0.25&&v2>=0.72*v1) line+=" or <b>&ldquo;"+b2.term+"&rdquo;</b>"; }
+        if(gv>mainV){mainV=gv;main=o;}
+        const lift=gv/(gridMean[o.grid]||1e-6);
+        if(gv>=0.10 && lift>bestLift){bestLift=lift;reg=o;}}
+      if(!main){ line="&mdash;"; }
+      else{ line="<b>&ldquo;"+main.term+"&rdquo;</b>";
+        if(reg && reg!==main) line+=" &middot; local variant(s): <b>&ldquo;"+reg.term+"&rdquo;</b>"; }
     }
     tip.innerHTML="<b>"+best.name+"</b><br><small>"+line+"</small>";
     tip.style.left=((best.col+0.5)*CELL/sx)+"px";tip.style.top=((best.row+0.5)*CELL/sy)+"px";tip.style.opacity=1;}
@@ -703,10 +844,10 @@ cv.addEventListener("click",(e)=>{
   const x=(e.clientX-rect.left)*sx,y=(e.clientY-rect.top)*sy;
   let best=null,bd=1e9;for(const ct of cities){const dd=Math.hypot((ct.col+0.5)*CELL-x,(ct.row+0.5)*CELL-y);if(dd<bd){bd=dd;best=ct;}}
   if(best&&bd<=26){const rhymes=(grids.q1[best.row|0][best.col|0]||0)>=0.5;
-    const strut=rhymes?"str&#650;t":"str&#652;t";
+    const cut=rhymes?"k&#650;t":"k&#652;t";
     detail.innerHTML="<b>"+best.name+"</b> &mdash; "+
-      (rhymes?"foot &amp; strut <b>rhyme</b> (both /&#650;/)":"foot &amp; strut are <b>distinct</b> (/&#650;/ vs /&#652;/)")+
-      "<br><span class='ipa'>/f&#650;t/ &middot; /"+strut+"/</span>";}
+      (rhymes?"foot &amp; cut <b>rhyme</b> (both /&#650;/)":"foot &amp; cut are <b>distinct</b> (/&#650;/ vs /&#652;/)")+
+      "<br><span class='ipa'>/f&#650;t/ &middot; /"+cut+"/</span>";}
 });
 
 // ---- landing page: pixel map of Great Britain's major dialect groups ----
@@ -731,6 +872,7 @@ function startQuiz(){
   document.getElementById("progresswrap").style.display="";
   document.getElementById("progress").style.display="";
   document.getElementById("stage").style.display="flex";
+  document.getElementById("restart").style.display="inline-flex";
   render();
 }
 function showIntro(){
@@ -738,6 +880,7 @@ function showIntro(){
   document.getElementById("progresswrap").style.display="none";
   document.getElementById("progress").style.display="none";
   document.getElementById("stage").style.display="none";
+  document.getElementById("restart").style.display="none";
 }
 document.getElementById("startbtn").onclick=startQuiz;
 drawMini();
@@ -747,6 +890,7 @@ showIntro();
     json.dumps(cities), json.dumps(cg.tolist()), json.dumps(names),
     json.dumps(region_grid), json.dumps(region_names),
     json.dumps(dialect_grid), json.dumps(dialect_colors),
+    json.dumps(popsicle_uri),
 )
 
 with open("index.html", "w") as f:
