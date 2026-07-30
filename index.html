@@ -68,12 +68,12 @@
   .tip{position:absolute;background:var(--ink);color:#fff;padding:6px 10px;border-radius:6px;font-size:12px;
        line-height:1.35;white-space:nowrap;pointer-events:none;opacity:0;transform:translate(-50%,-118%);
        transition:opacity .1s;} .tip b{font-weight:600;} .tip small{opacity:.82;}
-  /* landing page: two panels that fill the width, vertically centred */
-  #intro{display:flex;gap:56px;align-items:center;justify-content:center;max-width:1000px;
-       margin:0 auto;min-height:80vh;flex-wrap:wrap;}
-  .intro-left{flex:1 1 320px;display:flex;flex-direction:column;align-items:center;text-align:center;}
-  .intro-right{flex:1 1 360px;max-width:440px;display:flex;flex-direction:column;justify-content:center;text-align:left;}
-  .intro-title{font-size:32px;font-weight:750;letter-spacing:-.02em;margin:0 0 4px;line-height:1.1;}
+  /* landing page: two panels, vertically centred and filling the viewport */
+  #intro{display:flex;gap:44px;align-items:center;justify-content:center;max-width:1000px;
+       margin:0 auto;min-height:calc(100vh - 40px);flex-wrap:wrap;}
+  .intro-left{flex:0 0 320px;max-width:320px;display:flex;flex-direction:column;align-items:center;text-align:center;}
+  .intro-right{flex:0 1 400px;max-width:400px;display:flex;flex-direction:column;justify-content:center;text-align:left;}
+  .intro-title{font-size:31px;font-weight:750;letter-spacing:-.02em;margin:0 0 6px;line-height:1.12;}
   .intro-sub{font-size:12.5px;color:var(--muted);margin:0 0 16px;}
   #introcvwrap{position:relative;display:inline-block;}
   #introcv{display:block;margin:0 auto 10px;image-rendering:auto;cursor:crosshair;max-width:100%;}
@@ -105,7 +105,7 @@
   </header>
   <div id="intro">
     <div class="intro-left">
-      <div class="intro-title">The British Dialect Quiz</div>
+      <div class="intro-title">The British Dialect&nbsp;Quiz</div>
       <div class="intro-sub">Answer a few questions, see where each answer places you on the map.</div>
       <div id="introcvwrap"><canvas id="introcv"></canvas><div id="introtip"></div></div>
       <p class="intro-cap" id="introcap">Hover the map to explore the dialect groups</p>
@@ -114,7 +114,7 @@
       <p class="intro-lead">How you say a few everyday words, and what you call bread, your evening meal, or a splinter, quietly gives away where in Britain you&rsquo;re from.</p>
       <p class="intro-body">This short quiz asks how <i>you</i> speak. After each answer a heat map lights up, showing where in Great Britain that feature is common, all drawn from published dialect research. Work through them and see which corner of the map your speech belongs to.</p>
       <button id="startbtn">Start the quiz &rarr;</button>
-      <p class="intro-note"><span class="aboutwrap"><span class="aboutbtn">&#9432;</span><span class="aboutinfo">This is a pixel-art version of the British dialect map. It was made by <b>Alan Levita</b>, a Cambridge Linguistics graduate interning at the Intellectual Forum (IF) at Jesus College, together with <b>Prof. Bert Vaux</b> of King&rsquo;s College, Cambridge. Bert&rsquo;s research was the basis for the original <i>New York Times</i> dialect quiz, and the IF funds the project.<br><br>A custom algorithm uses your answers to estimate roughly where you&rsquo;re from. All the maps were redrawn by hand in a pixel-art style, based on isoglosses from published research on British dialects.</span></span> Powered by the Intellectual Forum at Jesus College, University of Cambridge</p>
+      <p class="intro-note"><span class="aboutwrap"><span class="aboutbtn">&#9432;</span><span class="aboutinfo">>This is a pixel-art version of the British dialect map. It was made by <b>Alan Levita</b> during a research internship at the Intellectual Forum (IF) at Jesus College, University of Cambridge, drawing on the research of <b>Prof. Bert Vaux</b> of King&rsquo;s College, Cambridge. Bert&rsquo;s work also formed the basis for the original <i>New York Times</i> dialect quiz.<br><br>Your answers are used to estimate roughly where you&rsquo;re from. All the maps were redrawn by hand in a pixel-art style, based on isoglosses from published research on British dialects.</span></span> Powered by the Intellectual Forum at Jesus College, University of Cambridge</p>
     </div>
   </div>
   <div id="stage">
