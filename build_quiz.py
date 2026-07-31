@@ -21,8 +21,11 @@ import base64
 import numpy as np
 from scipy import ndimage
 
-# ice-lolly photo, embedded so the page stays self-contained
-popsicle_uri = "data:image/avif;base64," + base64.b64encode(open("popsicle-image.avif", "rb").read()).decode()
+# question photos, embedded so the page stays self-contained
+def _img_uri(path, mime):
+    return "data:" + mime + ";base64," + base64.b64encode(open(path, "rb").read()).decode()
+icelolly_uri = _img_uri("ice_lolly-pic.webp", "image/webp")
+bread_uri = _img_uri("bread-pic.jpg", "image/jpeg")
 
 with open("britain_pixel_data.json") as f:
     d = json.load(f)
@@ -384,7 +387,7 @@ html = """<!DOCTYPE html>
   html,body{margin:0;min-height:100%%;}
   body{background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,sans-serif;}
   #app{max-width:1060px;margin:0 auto;padding:20px 20px 16px;position:relative;}
-  #qimg{display:block;width:230px;height:230px;object-fit:cover;border-radius:16px;margin:2px auto 16px;box-shadow:0 6px 18px rgba(0,0,0,.16);}
+  #qimg{display:block;width:230px;height:230px;object-fit:cover;border-radius:16px;margin:48px auto 0;box-shadow:0 6px 18px rgba(0,0,0,.16);}
   .sliderbox{margin:20px 0 8px;}
   .sliderbox input[type=range]{width:100%%;accent-color:var(--accent);height:6px;cursor:pointer;}
   .slabels{display:flex;justify-content:space-between;align-items:flex-start;font-size:12px;color:var(--muted);margin-top:10px;line-height:1.35;}
@@ -523,7 +526,6 @@ html = """<!DOCTYPE html>
   <div id="stage">
     <div id="left">
       <h1 id="qtext"></h1>
-      <img id="qimg" style="display:none" alt="">
       <div id="qtag"></div>
       <div id="opts"></div>
       <div class="hint" id="hint" style="display:none"></div>
@@ -535,6 +537,7 @@ html = """<!DOCTYPE html>
       </div>
     </div>
     <div id="right">
+      <img id="qimg" style="display:none" alt="">
       <div id="rtitle">Answer the question &rarr; your map appears here</div>
       <div id="out"><div id="rprompt">your map will appear here</div><canvas id="cv" style="display:none"></canvas>
         <div class="tip" id="tip"></div></div>
@@ -552,7 +555,8 @@ const land=%s,cities=%s,cg=%s,names=%s;
 const regionGrid=%s,regionNames=%s;
 const dialectGrid=%s,dialectColors=%s;
 const HIRES=%s;
-const POPSICLE_IMG=%s;
+const ICELOLLY_IMG=%s;
+const BREAD_IMG=%s;
 const QUESTIONS=[
   // metric "pct": a clean binary the paper reports as proportions -> show a percent.
   // ipa:true enables the click-a-city foot-strut IPA readout (foot-strut only).
@@ -585,7 +589,7 @@ const QUESTIONS=[
   // metric "prevalence": lexical variants overlap in a speaker's lexicon and the
   // surface is a relative Gi* hotspot, not a headcount -> show a qualitative band,
   // NOT a fake percentage.
-  {id:"bread",text:"What do you call a small bread roll?",tag:"real data (bread-roll survey)",real:true,phon:false,multi:true,metric:"prevalence",
+  {id:"bread",text:"This is called a &#95;&#95;&#95;&#95;",img:BREAD_IMG,tag:"real data (bread-roll survey)",real:true,phon:false,multi:true,metric:"prevalence",
    opts:[
      {label:"Barm / barm cake",v:"barm",term:"barm",grid:"barm"},
      {label:"Tea cake",v:"teacake",term:"tea cake",grid:"teacake"},
@@ -600,7 +604,7 @@ const QUESTIONS=[
   // single-select lexical with a photo. "ice lolly" is standard; "lolly ice" is the
   // Merseyside reversal. "other"/"no word" don't map to a region (inconclusive).
   {id:"lolly",text:"What would you call this frozen treat?",
-   img:POPSICLE_IMG,tag:"",real:true,metric:"prevalence",info:"lolly",infoLabel:"ice lolly vs lolly ice",
+   img:ICELOLLY_IMG,tag:"",real:true,metric:"prevalence",info:"lolly",infoLabel:"ice lolly vs lolly ice",
    opts:[
      {label:"Ice lolly",v:"icelolly",term:"ice lolly",grid:"icelolly"},
      {label:"Lolly ice",v:"lollyice",term:"lolly ice",grid:"lollyice"},
@@ -648,11 +652,22 @@ for(const k in grids){let s=0,n=0;const g=grids[k];
 function clearRight(prompt){
   // no map yet -> hide the whole right panel and let the left frame center on the page
   document.getElementById("right").style.display="none";
+  document.getElementById("qimg").style.display="none";
   document.getElementById("rprompt").style.display="";cv.style.display="none";
   document.getElementById("legend").style.display="none";document.getElementById("detail").innerHTML="";
   document.getElementById("match").innerHTML="";
   document.getElementById("infowrap").style.display="none";
   document.getElementById("rtitle").innerHTML=prompt;
+}
+// photo questions before reveal: show the photo on the right, keep the left compact
+function showRightImage(q){
+  document.getElementById("right").style.display="";
+  const im=document.getElementById("qimg"); im.src=q.img; im.style.display="block";
+  document.getElementById("rprompt").style.display="none";cv.style.display="none";
+  document.getElementById("legend").style.display="none";document.getElementById("detail").innerHTML="";
+  document.getElementById("match").innerHTML="";
+  document.getElementById("infowrap").style.display="none";
+  document.getElementById("rtitle").innerHTML="";
 }
 function render(){
   const prog=document.getElementById("progress"),qt=document.getElementById("qtext"),
@@ -678,8 +693,6 @@ function render(){
   const q=QUESTIONS[idx];
   prog.textContent="Question "+(idx+1)+" of "+QUESTIONS.length;
   qt.style.display="";qt.innerHTML=q.text; box.style.display="";box.innerHTML="";done.style.display="none";
-  const qimg=document.getElementById("qimg");
-  if(q.img){ qimg.src=q.img; qimg.style.display="block"; } else { qimg.style.display="none"; }
   const ans=answers[q.id];
   const contLabel=(idx===QUESTIONS.length-1)?"Finish →":"Continue →";
   const answered=q.multi?(Array.isArray(ans)&&ans.length>0):(ans!==undefined);
@@ -701,7 +714,7 @@ function render(){
     sl.onchange=()=>{ answers[q.id]=+sl.value; revealedSet.delete(q.id); render(); };
   } else if(q.multi){
     const selected=new Set(Array.isArray(ans)?ans:[]);
-    hint.innerHTML=isRevealed?"":"Select all that apply, then press &ldquo;See map&rdquo;.";
+    hint.innerHTML=isRevealed?"":"Select all that apply";
     q.opts.forEach(o=>{const bt=document.createElement("button");
       bt.className="opt"+(selected.has(o.v)?" sel":"");
       bt.innerHTML="<span class='box'>"+(selected.has(o.v)?"&#10003;":"")+"</span>"+o.label;
@@ -728,7 +741,8 @@ function render(){
     drawMap(q,ans);
     next.disabled=false; next.textContent=contLabel; next.onclick=()=>{idx++;render();};
   } else {
-    clearRight("Choose your answer"+(q.multi?"(s)":"")+", then press &ldquo;See map&rdquo;");
+    if(q.img) showRightImage(q);           // photo questions: show the photo on the right side
+    else clearRight("Choose your answer"+(q.multi?"(s)":"")+", then press &ldquo;See map&rdquo;");
     next.disabled=!answered; next.textContent="See map →";
     next.onclick=()=>{ if(answered){revealedSet.add(q.id);render();} };
   }
@@ -793,6 +807,7 @@ function matchByLevel(surf,target){
 
 function drawMap(q,ans){
   document.getElementById("right").style.display="";   // map revealed -> show the right panel
+  document.getElementById("qimg").style.display="none";  // hide the photo once the map appears
   document.getElementById("rprompt").style.display="none";cv.style.display="block";
   document.getElementById("legend").style.display="flex";
   const multi=Array.isArray(ans);
@@ -982,7 +997,7 @@ showIntro();
     json.dumps(region_grid), json.dumps(region_names),
     json.dumps(dialect_grid), json.dumps(dialect_colors),
     json.dumps(hires_dialect),
-    json.dumps(popsicle_uri),
+    json.dumps(icelolly_uri), json.dumps(bread_uri),
 )
 
 with open("index.html", "w") as f:
