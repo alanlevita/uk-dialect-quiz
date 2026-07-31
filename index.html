@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html><head><meta charset="utf-8"><meta name="viewport" content="width=1100"><style>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><style>
   :root{--bg:#f7f5f0;--ink:#2b2b2b;--muted:#8a857c;--accent:#c0141f;--card:#fff;--line:#e6e1d8;}
   *{box-sizing:border-box;}
   html,body{margin:0;min-height:100%;}
@@ -102,8 +102,12 @@
     #left{flex:1 1 auto;max-width:100%;width:100%;}
     #right{max-width:100%;}
     .intro-right{max-width:100%;}
-    #restart{top:10px;right:10px;padding:8px 12px;font-size:12px;}
+    /* icon-only restart button on phones so it never covers the title */
+    #restart{top:10px;right:10px;padding:7px 9px;gap:0;}
+    #restart .rtext{display:none;}
     #restart .ricon{font-size:22px;}
+    .site-title{font-size:20px;}
+    .site-sub{font-size:12px;}
     /* the (i) pop-ups centre in the viewport so their text never gets cut off */
     #info,.aboutinfo{position:fixed;left:50%;right:auto;top:auto;bottom:16px;
          transform:translateX(-50%);width:92vw;max-width:92vw;}
@@ -111,9 +115,9 @@
   }
 </style></head><body>
 <div id="app">
-  <button id="restart" style="display:none"><span class="ricon">&#10227;</span> Restart quiz</button>
+  <button id="restart" style="display:none"><span class="ricon">&#10227;</span><span class="rtext"> Restart quiz</span></button>
   <header>
-    <div class="site-title">The British Dialect Quiz</div>
+    <div class="site-title">The Great British Dialect Quiz</div>
     <div class="site-sub">Answer a few questions &mdash; see where each answer places you on the map.</div>
     <div class="progress-wrap" id="progresswrap"><div class="progress-bar" id="pbar"></div></div>
     <div id="progress"></div>
