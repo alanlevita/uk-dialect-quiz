@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><style>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=1100"><style>
   :root{--bg:#f7f5f0;--ink:#2b2b2b;--muted:#8a857c;--accent:#c0141f;--card:#fff;--line:#e6e1d8;}
   *{box-sizing:border-box;}
   html,body{margin:0;min-height:100%;}
@@ -69,14 +69,16 @@
        line-height:1.35;white-space:nowrap;pointer-events:none;opacity:0;transform:translate(-50%,-118%);
        transition:opacity .1s;} .tip b{font-weight:600;} .tip small{opacity:.82;}
   /* landing page: two panels, vertically centred and filling the viewport */
-  #intro{display:flex;gap:8vw;align-items:center;justify-content:center;max-width:1180px;
-       margin:0 auto;min-height:calc(100vh - 40px);flex-wrap:wrap;}
-  .intro-left{flex:0 0 320px;max-width:320px;display:flex;flex-direction:column;align-items:center;text-align:center;}
+  #intro{display:flex;flex-direction:column;align-items:center;justify-content:center;max-width:1180px;
+       margin:0 auto;min-height:calc(100vh - 40px);}
+  .intro-head{text-align:center;margin-bottom:30px;width:100%;}
+  .intro-panels{display:flex;gap:8vw;align-items:center;justify-content:center;flex-wrap:wrap;width:100%;}
+  .intro-left{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;text-align:center;}
   .intro-right{flex:0 1 400px;max-width:400px;display:flex;flex-direction:column;justify-content:center;text-align:left;}
-  .intro-title{font-size:31px;font-weight:750;letter-spacing:-.02em;margin:0 0 6px;line-height:1.12;}
-  .intro-sub{font-size:12.5px;color:var(--muted);margin:0 0 16px;}
+  .intro-title{font-size:clamp(36px,5.4vw,62px);font-weight:800;letter-spacing:-.025em;margin:0 0 8px;line-height:1.02;}
+  .intro-sub{font-size:14px;color:var(--muted);margin:0;}
   #introcvwrap{position:relative;display:inline-block;}
-  #introcv{display:block;margin:0 auto 10px;image-rendering:auto;cursor:crosshair;max-width:100%;}
+  #introcv{display:block;margin:0 auto 10px;image-rendering:auto;cursor:crosshair;max-width:100%;height:auto;}
   #introtip{position:absolute;pointer-events:none;opacity:0;transform:translate(-50%,-135%);white-space:nowrap;
        font-size:12px;font-weight:650;color:#fff;padding:4px 9px;border-radius:6px;transition:opacity .08s;z-index:5;}
   .intro-cap{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:0;min-height:1.2em;}
@@ -94,6 +96,19 @@
   .aboutinfo::after{content:"";position:absolute;top:100%;left:50%;transform:translateX(-50%);
        border:7px solid transparent;border-top-color:var(--card);}
   .aboutwrap:hover .aboutinfo{display:block;}
+  /* ---- narrow screens / phones: stop anything running off the edge ---- */
+  @media (max-width:640px){
+    #app{padding:16px 14px 14px;}
+    #left{flex:1 1 auto;max-width:100%;width:100%;}
+    #right{max-width:100%;}
+    .intro-right{max-width:100%;}
+    #restart{top:10px;right:10px;padding:8px 12px;font-size:12px;}
+    #restart .ricon{font-size:22px;}
+    /* the (i) pop-ups centre in the viewport so their text never gets cut off */
+    #info,.aboutinfo{position:fixed;left:50%;right:auto;top:auto;bottom:16px;
+         transform:translateX(-50%);width:92vw;max-width:92vw;}
+    #info::before,.aboutinfo::after{display:none;}
+  }
 </style></head><body>
 <div id="app">
   <button id="restart" style="display:none"><span class="ricon">&#10227;</span> Restart quiz</button>
@@ -104,9 +119,12 @@
     <div id="progress"></div>
   </header>
   <div id="intro">
-    <div class="intro-left">
-      <div class="intro-title">The British Dialect&nbsp;Quiz</div>
+    <div class="intro-head">
+      <div class="intro-title">The Great British Dialect Quiz</div>
       <div class="intro-sub">Answer a few questions, see where each answer places you on the map.</div>
+    </div>
+    <div class="intro-panels">
+    <div class="intro-left">
       <div id="introcvwrap"><canvas id="introcv"></canvas><div id="introtip"></div></div>
       <p class="intro-cap" id="introcap">Hover the map to explore the dialect groups</p>
     </div>
@@ -115,6 +133,9 @@
       <p class="intro-body">This short quiz asks how <i>you</i> speak. After each answer a heat map lights up, showing where in Great Britain that feature is common, all drawn from published dialect research. Work through them and see which corner of the map your speech belongs to.</p>
       <button id="startbtn">Start the quiz &rarr;</button>
       <p class="intro-note"><span class="aboutwrap"><span class="aboutbtn">&#9432;</span><span class="aboutinfo">This is a pixel-art version of the British dialect map. It was made by <b>Alan Levita</b> during an internship at the Intellectual Forum at Jesus College, University of Cambridge, drawing on the research of <b>Prof. Bert Vaux</b> of King&rsquo;s College, Cambridge. Bert&rsquo;s work formed the basis for the original <i>New York Times</i> dialect quiz.<br><br>Your answers are used to estimate roughly where you&rsquo;re from. All the maps were redrawn by hand in a pixel-art style, based on isoglosses from published research on British dialects.</span></span> Powered by the Intellectual Forum at Jesus College, University of Cambridge</p>
+    </div>
+    </div>
+  </div>
   <div id="stage">
     <div id="left">
       <h1 id="qtext"></h1>
@@ -517,7 +538,7 @@ cv.addEventListener("click",(e)=>{
 function drawMini(){
   const rows=HIRES, Hh=rows.length, Wh=rows[0].length, M=2;   // fine county-shaped raster
   const mc=document.getElementById("introcv"); mc.width=Wh*M; mc.height=Hh*M;
-  mc.style.width=(Wh*M/2)+"px"; mc.style.height=(Hh*M/2)+"px"; // EXACT 2:1 -> uniform pixels
+  mc.style.width=(Wh*M/2)+"px";   // height is auto (CSS) -> scales proportionally, stays responsive
   const mx=mc.getContext("2d");
   for(let r=0;r<Hh;r++){const row=rows[r];for(let c=0;c<Wh;c++){
     const ch=row[c]; if(ch===".")continue;
