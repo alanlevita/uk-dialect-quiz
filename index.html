@@ -62,7 +62,7 @@
         border-radius:10px;padding:11px 13px;box-shadow:0 8px 24px rgba(0,0,0,.16);z-index:40;}
   #info::before{content:"";position:absolute;top:100%;left:50%;transform:translateX(-50%);
         border:7px solid transparent;border-top-color:var(--card);}
-  #infowrap:hover #info{display:block;}
+  #infowrap:hover #info,#infowrap.open #info{display:block;}
   #info .src{color:#aaa;font-size:11px;margin-top:8px;} #info .isep{border:none;border-top:1px solid #eee;margin:9px 0;}
   #detail{font-size:13px;color:#444;margin-top:6px;min-height:1.2em;} #detail .ipa{font-size:18px;color:#111;margin:0 6px;letter-spacing:.5px;}
   .tip{position:absolute;background:var(--ink);color:#fff;padding:6px 10px;border-radius:6px;font-size:12px;
@@ -95,7 +95,8 @@
        border-radius:10px;padding:14px 16px;box-shadow:0 10px 28px rgba(0,0,0,.18);z-index:60;letter-spacing:normal;}
   .aboutinfo::after{content:"";position:absolute;top:100%;left:50%;transform:translateX(-50%);
        border:7px solid transparent;border-top-color:var(--card);}
-  .aboutwrap:hover .aboutinfo{display:block;}
+  .aboutwrap:hover .aboutinfo,.aboutwrap.open .aboutinfo{display:block;}
+  button,.opt,#infobtn,.aboutbtn{touch-action:manipulation;}   /* removes tap delay on phones */
   /* ---- narrow screens / phones: stop anything running off the edge ---- */
   @media (max-width:640px){
     #app{padding:16px 14px 14px;}
@@ -103,7 +104,7 @@
     #right{max-width:100%;}
     .intro-right{max-width:100%;}
     /* icon-only restart button on phones so it never covers the title */
-    #restart{top:10px;right:10px;padding:7px 9px;gap:0;}
+    #restart{top:4px;right:10px;padding:7px 9px;gap:0;}
     #restart .rtext{display:none;}
     #restart .ricon{font-size:22px;}
     .site-title{font-size:20px;}
@@ -136,7 +137,7 @@
       <p class="intro-lead">How you say a few everyday words, and what you call bread, your evening meal, or a splinter, quietly gives away where in Britain you&rsquo;re from.</p>
       <p class="intro-body">This short quiz asks how <i>you</i> speak. After each answer a heat map lights up, showing where in Great Britain that feature is common, all drawn from published dialect research. Work through them and see which corner of the map your speech belongs to.</p>
       <button id="startbtn">Start the quiz &rarr;</button>
-      <p class="intro-note"><span class="aboutwrap"><span class="aboutbtn">&#9432;</span><span class="aboutinfo">This is a pixel-art version of the British dialect map. It was made by <b>Alan Levita</b> during an internship at the Intellectual Forum at Jesus College, University of Cambridge, drawing on the research of <b>Prof. Bert Vaux</b> of King&rsquo;s College, Cambridge. Bert&rsquo;s work formed the basis for the original <i>New York Times</i> dialect quiz.<br><br>Your answers are used to estimate roughly where you&rsquo;re from. All the maps were redrawn by hand in a pixel-art style, based on isoglosses from published research on British dialects.</span></span> Powered by the Intellectual Forum at Jesus College, University of Cambridge</p>
+      <p class="intro-note"><span class="aboutwrap"><span class="aboutbtn">&#9432;</span><span class="aboutinfo">This is a pixel-art version of the British dialect map. It was made by <b>Alan Levita</b> during a research internship at the Intellectual Forum at Jesus College, Cambridge, drawing on the research of <b>Prof. Bert Vaux</b> of King&rsquo;s College, Cambridge. Bert&rsquo;s work formed the basis for the original <i>New York Times</i> dialect quiz.<br><br>Your answers are used to estimate roughly where you&rsquo;re from. All the maps were redrawn by hand in a pixel-art style, based on isoglosses from published research on British dialects.</span></span> Powered by the Intellectual Forum at Jesus College, University of Cambridge</p>
     </div>
     </div>
   </div>
@@ -491,10 +492,10 @@ function drawMap(q,ans){
 }
 
 const tip=document.getElementById("tip");
-cv.addEventListener("mousemove",(e)=>{
+function cvTip(clientX,clientY){
   if(!SHOWN){tip.style.opacity=0;return;}
   const rect=cv.getBoundingClientRect(),sx=cv.width/rect.width,sy=cv.height/rect.height;
-  const x=(e.clientX-rect.left)*sx,y=(e.clientY-rect.top)*sy;
+  const x=(clientX-rect.left)*sx,y=(clientY-rect.top)*sy;
   let best=null,bd=1e9;for(const ct of cities){const dd=Math.hypot((ct.col+0.5)*CELL-x,(ct.row+0.5)*CELL-y);if(dd<bd){bd=dd;best=ct;}}
   if(best&&bd<=24){const v=SHOWN.surf[best.row|0]?SHOWN.surf[best.row|0][best.col|0]:null;
     const br=best.row|0,bc=best.col|0;
@@ -521,8 +522,13 @@ cv.addEventListener("mousemove",(e)=>{
     }
     tip.innerHTML="<b>"+best.name+"</b><br><small>"+line+"</small>";
     tip.style.left=((best.col+0.5)*CELL/sx)+"px";tip.style.top=((best.row+0.5)*CELL/sy)+"px";tip.style.opacity=1;}
-  else tip.style.opacity=0;});
+  else tip.style.opacity=0;
+}
+cv.addEventListener("mousemove",(e)=>cvTip(e.clientX,e.clientY));
 cv.addEventListener("mouseleave",()=>tip.style.opacity=0);
+// touch: tap or drag on the map to read a city (phones have no hover)
+cv.addEventListener("touchstart",(e)=>{if(e.touches[0])cvTip(e.touches[0].clientX,e.touches[0].clientY);},{passive:true});
+cv.addEventListener("touchmove",(e)=>{if(e.touches[0])cvTip(e.touches[0].clientX,e.touches[0].clientY);},{passive:true});
 
 // click a city (foot-strut only) -> expected local IPA
 const detail=document.getElementById("detail");
@@ -550,18 +556,21 @@ function drawMini(){
     mx.fillStyle="rgb("+col[0]+","+col[1]+","+col[2]+")";
     mx.fillRect(c*M,r*M,M,M);
   }}
-  // hover -> name the dialect group under the cursor (replaces the old static key)
+  // hover/touch -> name the dialect group under the cursor (replaces the old static key)
   const tip=document.getElementById("introtip"), cap=document.getElementById("introcap");
-  mc.onmousemove=(e)=>{const rect=mc.getBoundingClientRect();
-    const c=Math.floor((e.clientX-rect.left)/(rect.width/Wh)), r=Math.floor((e.clientY-rect.top)/(rect.height/Hh));
+  function miniTip(clientX,clientY){const rect=mc.getBoundingClientRect();
+    const c=Math.floor((clientX-rect.left)/(rect.width/Wh)), r=Math.floor((clientY-rect.top)/(rect.height/Hh));
     const ch=(r>=0&&r<Hh&&c>=0&&c<Wh)?rows[r][c]:".";
     const di=(ch===".")?-1:+ch;
     if(di>=0){const [nm,col]=dialectColors[di];
       tip.textContent=nm; tip.style.background="rgb("+col[0]+","+col[1]+","+col[2]+")";
-      tip.style.left=(e.clientX-rect.left)+"px"; tip.style.top=(e.clientY-rect.top)+"px"; tip.style.opacity=1;
+      tip.style.left=(clientX-rect.left)+"px"; tip.style.top=(clientY-rect.top)+"px"; tip.style.opacity=1;
       cap.textContent=nm; cap.style.color="rgb("+col[0]+","+col[1]+","+col[2]+")";
-    } else { tip.style.opacity=0; }};
+    } else { tip.style.opacity=0; }}
+  mc.onmousemove=(e)=>miniTip(e.clientX,e.clientY);
   mc.onmouseleave=()=>{tip.style.opacity=0; cap.textContent="Hover the map to explore the dialect groups"; cap.style.color="";};
+  mc.ontouchstart=(e)=>{if(e.touches[0])miniTip(e.touches[0].clientX,e.touches[0].clientY);};
+  mc.ontouchmove=(e)=>{if(e.touches[0]){e.preventDefault();miniTip(e.touches[0].clientX,e.touches[0].clientY);}};
 }
 function startQuiz(){
   document.getElementById("intro").style.display="none";
@@ -581,6 +590,11 @@ function showIntro(){
   document.getElementById("restart").style.display="none";
 }
 document.getElementById("startbtn").onclick=startQuiz;
+// touch: tap the (i) to open its popup (phones have no hover); tap elsewhere to close
+document.getElementById("infobtn").addEventListener("click",function(e){e.stopPropagation();document.getElementById("infowrap").classList.toggle("open");});
+var _ab=document.querySelector(".aboutbtn");
+if(_ab)_ab.addEventListener("click",function(e){e.stopPropagation();this.closest(".aboutwrap").classList.toggle("open");});
+document.addEventListener("click",function(){document.getElementById("infowrap").classList.remove("open");var aw=document.querySelector(".aboutwrap");if(aw)aw.classList.remove("open");});
 drawMini();
 showIntro();
 </script></body></html>
