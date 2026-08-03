@@ -351,34 +351,175 @@ dialect_grid = [[(county_dialect.get(names[cg[r][c]], -1) if land[r][c] else -1)
                  for c in range(W)] for r in range(H)]
 dialect_colors = [[dn, list(col)] for dn, _cl, col in DIALECT]
 
-# ---- HIGH-RES landing map: rasterize the real historic-county polygons so the
-# teaser is detailed like the survey maps (still a pixel raster, just much finer) ----
-from matplotlib.path import Path as _MplPath
-_gj = json.load(open("historic_counties.geojson"))
-_polys = []
-for _ft in _gj["features"]:
-    _di = county_dialect.get(_ft["properties"].get("name"), -1)
-    if _di < 0:
-        continue
-    _geom = _ft["geometry"]
-    _coords = _geom["coordinates"] if _geom["type"] == "MultiPolygon" else [_geom["coordinates"]]
-    for _poly in _coords:
-        _polys.append((_di, _poly[0]))
-_pts = [p for _, ring in _polys for p in ring]
-_lon0, _lon1 = min(p[0] for p in _pts), max(p[0] for p in _pts)
-_lat0, _lat1 = min(p[1] for p in _pts), max(p[1] for p in _pts)
-_kx = float(np.cos(np.radians((_lat0 + _lat1) / 2)))
-_Hh = 480
-_Wh = int(round((_lon1 - _lon0) * _kx / (_lat1 - _lat0) * _Hh))
-_xs, _ys = np.meshgrid(np.arange(_Wh), np.arange(_Hh))
-_gp = np.column_stack([_xs.ravel() + 0.5, _ys.ravel() + 0.5])
-_hg = np.full(_Hh * _Wh, -1, dtype=int)
-for _di, _ring in _polys:
-    _proj = [((lo - _lon0) * _kx / ((_lon1 - _lon0) * _kx) * (_Wh - 1),
-              (_lat1 - la) / (_lat1 - _lat0) * (_Hh - 1)) for lo, la in _ring]
-    _hg[_MplPath(_proj).contains_points(_gp)] = _di
-_hg = _hg.reshape(_Hh, _Wh)
-hires_dialect = ["".join("." if v < 0 else str(v) for v in row) for row in _hg]
+# (The landing map now uses the same chunky low-res dialect_grid as the quiz maps,
+# so the old high-res county-polygon rasterization is no longer needed.)
+
+# Towns/cities of GREAT BRITAIN (England, Scotland, Wales only — no Northern Ireland,
+# since the question asks about growing up in GB), each with its county / council area.
+# Used for the hometown type-ahead. England = ceremonial counties; Scotland = council
+# areas; Wales = principal/preserved counties. Curated but broad; expandable.
+GB_TOWNS = sorted(set([
+    # ---- England ----
+    ("London", "Greater London"), ("Croydon", "Greater London"), ("Bromley", "Greater London"),
+    ("Enfield", "Greater London"), ("Harrow", "Greater London"), ("Hounslow", "Greater London"),
+    ("Manchester", "Greater Manchester"), ("Salford", "Greater Manchester"), ("Bolton", "Greater Manchester"),
+    ("Stockport", "Greater Manchester"), ("Oldham", "Greater Manchester"), ("Rochdale", "Greater Manchester"),
+    ("Bury", "Greater Manchester"), ("Wigan", "Greater Manchester"), ("Altrincham", "Greater Manchester"),
+    ("Sale", "Greater Manchester"), ("Ashton-under-Lyne", "Greater Manchester"), ("Stretford", "Greater Manchester"),
+    ("Liverpool", "Merseyside"), ("Birkenhead", "Merseyside"), ("Bootle", "Merseyside"),
+    ("St Helens", "Merseyside"), ("Southport", "Merseyside"), ("Wallasey", "Merseyside"),
+    ("Newton-le-Willows", "Merseyside"),
+    ("Birmingham", "West Midlands"), ("Coventry", "West Midlands"), ("Wolverhampton", "West Midlands"),
+    ("Dudley", "West Midlands"), ("Walsall", "West Midlands"), ("West Bromwich", "West Midlands"),
+    ("Solihull", "West Midlands"), ("Sutton Coldfield", "West Midlands"), ("Stourbridge", "West Midlands"),
+    ("Halesowen", "West Midlands"), ("Smethwick", "West Midlands"),
+    ("Leeds", "West Yorkshire"), ("Bradford", "West Yorkshire"), ("Huddersfield", "West Yorkshire"),
+    ("Wakefield", "West Yorkshire"), ("Halifax", "West Yorkshire"), ("Dewsbury", "West Yorkshire"),
+    ("Keighley", "West Yorkshire"), ("Batley", "West Yorkshire"), ("Castleford", "West Yorkshire"),
+    ("Pontefract", "West Yorkshire"), ("Brighouse", "West Yorkshire"),
+    ("Sheffield", "South Yorkshire"), ("Rotherham", "South Yorkshire"), ("Barnsley", "South Yorkshire"),
+    ("Doncaster", "South Yorkshire"),
+    ("York", "North Yorkshire"), ("Harrogate", "North Yorkshire"), ("Scarborough", "North Yorkshire"),
+    ("Middlesbrough", "North Yorkshire"), ("Redcar", "North Yorkshire"), ("Northallerton", "North Yorkshire"),
+    ("Ripon", "North Yorkshire"), ("Selby", "North Yorkshire"), ("Skipton", "North Yorkshire"),
+    ("Whitby", "North Yorkshire"),
+    ("Hull", "East Riding of Yorkshire"), ("Beverley", "East Riding of Yorkshire"),
+    ("Bridlington", "East Riding of Yorkshire"), ("Goole", "East Riding of Yorkshire"),
+    ("Newcastle upon Tyne", "Tyne and Wear"), ("Sunderland", "Tyne and Wear"), ("Gateshead", "Tyne and Wear"),
+    ("South Shields", "Tyne and Wear"), ("Washington", "Tyne and Wear"), ("Whitley Bay", "Tyne and Wear"),
+    ("Jarrow", "Tyne and Wear"), ("Wallsend", "Tyne and Wear"),
+    ("Durham", "County Durham"), ("Darlington", "County Durham"), ("Hartlepool", "County Durham"),
+    ("Stockton-on-Tees", "County Durham"), ("Bishop Auckland", "County Durham"),
+    ("Chester-le-Street", "County Durham"), ("Consett", "County Durham"), ("Peterlee", "County Durham"),
+    ("Morpeth", "Northumberland"), ("Blyth", "Northumberland"), ("Ashington", "Northumberland"),
+    ("Hexham", "Northumberland"), ("Berwick-upon-Tweed", "Northumberland"), ("Cramlington", "Northumberland"),
+    ("Preston", "Lancashire"), ("Blackburn", "Lancashire"), ("Blackpool", "Lancashire"),
+    ("Burnley", "Lancashire"), ("Lancaster", "Lancashire"), ("Chorley", "Lancashire"),
+    ("Accrington", "Lancashire"), ("Nelson", "Lancashire"), ("Morecambe", "Lancashire"),
+    ("Leyland", "Lancashire"), ("Fleetwood", "Lancashire"), ("Ormskirk", "Lancashire"),
+    ("Skelmersdale", "Lancashire"), ("Lytham St Annes", "Lancashire"),
+    ("Chester", "Cheshire"), ("Crewe", "Cheshire"), ("Warrington", "Cheshire"),
+    ("Ellesmere Port", "Cheshire"), ("Macclesfield", "Cheshire"), ("Runcorn", "Cheshire"),
+    ("Widnes", "Cheshire"), ("Northwich", "Cheshire"), ("Wilmslow", "Cheshire"),
+    ("Congleton", "Cheshire"), ("Nantwich", "Cheshire"), ("Winsford", "Cheshire"),
+    ("Carlisle", "Cumbria"), ("Barrow-in-Furness", "Cumbria"), ("Kendal", "Cumbria"),
+    ("Workington", "Cumbria"), ("Whitehaven", "Cumbria"), ("Penrith", "Cumbria"), ("Ulverston", "Cumbria"),
+    ("Lincoln", "Lincolnshire"), ("Grimsby", "Lincolnshire"), ("Scunthorpe", "Lincolnshire"),
+    ("Boston", "Lincolnshire"), ("Grantham", "Lincolnshire"), ("Skegness", "Lincolnshire"),
+    ("Stamford", "Lincolnshire"), ("Spalding", "Lincolnshire"), ("Gainsborough", "Lincolnshire"),
+    ("Nottingham", "Nottinghamshire"), ("Mansfield", "Nottinghamshire"), ("Newark-on-Trent", "Nottinghamshire"),
+    ("Worksop", "Nottinghamshire"), ("Retford", "Nottinghamshire"), ("Sutton-in-Ashfield", "Nottinghamshire"),
+    ("Derby", "Derbyshire"), ("Chesterfield", "Derbyshire"), ("Ilkeston", "Derbyshire"),
+    ("Swadlincote", "Derbyshire"), ("Buxton", "Derbyshire"), ("Glossop", "Derbyshire"),
+    ("Long Eaton", "Derbyshire"), ("Belper", "Derbyshire"),
+    ("Leicester", "Leicestershire"), ("Loughborough", "Leicestershire"), ("Hinckley", "Leicestershire"),
+    ("Coalville", "Leicestershire"), ("Melton Mowbray", "Leicestershire"), ("Wigston", "Leicestershire"),
+    ("Oakham", "Rutland"),
+    ("Stoke-on-Trent", "Staffordshire"), ("Stafford", "Staffordshire"), ("Burton upon Trent", "Staffordshire"),
+    ("Newcastle-under-Lyme", "Staffordshire"), ("Cannock", "Staffordshire"), ("Tamworth", "Staffordshire"),
+    ("Lichfield", "Staffordshire"), ("Leek", "Staffordshire"), ("Kidsgrove", "Staffordshire"),
+    ("Shrewsbury", "Shropshire"), ("Telford", "Shropshire"), ("Oswestry", "Shropshire"),
+    ("Bridgnorth", "Shropshire"), ("Ludlow", "Shropshire"),
+    ("Hereford", "Herefordshire"), ("Leominster", "Herefordshire"), ("Ross-on-Wye", "Herefordshire"),
+    ("Worcester", "Worcestershire"), ("Redditch", "Worcestershire"), ("Kidderminster", "Worcestershire"),
+    ("Bromsgrove", "Worcestershire"), ("Malvern", "Worcestershire"), ("Evesham", "Worcestershire"),
+    ("Warwick", "Warwickshire"), ("Nuneaton", "Warwickshire"), ("Rugby", "Warwickshire"),
+    ("Leamington Spa", "Warwickshire"), ("Stratford-upon-Avon", "Warwickshire"), ("Bedworth", "Warwickshire"),
+    ("Northampton", "Northamptonshire"), ("Kettering", "Northamptonshire"), ("Corby", "Northamptonshire"),
+    ("Wellingborough", "Northamptonshire"), ("Rushden", "Northamptonshire"), ("Daventry", "Northamptonshire"),
+    ("Norwich", "Norfolk"), ("Great Yarmouth", "Norfolk"), ("King's Lynn", "Norfolk"),
+    ("Thetford", "Norfolk"), ("Dereham", "Norfolk"),
+    ("Ipswich", "Suffolk"), ("Lowestoft", "Suffolk"), ("Bury St Edmunds", "Suffolk"),
+    ("Felixstowe", "Suffolk"), ("Haverhill", "Suffolk"), ("Newmarket", "Suffolk"), ("Sudbury", "Suffolk"),
+    ("Cambridge", "Cambridgeshire"), ("Peterborough", "Cambridgeshire"), ("Huntingdon", "Cambridgeshire"),
+    ("Ely", "Cambridgeshire"), ("Wisbech", "Cambridgeshire"), ("St Neots", "Cambridgeshire"),
+    ("March", "Cambridgeshire"),
+    ("Bedford", "Bedfordshire"), ("Luton", "Bedfordshire"), ("Dunstable", "Bedfordshire"),
+    ("Leighton Buzzard", "Bedfordshire"), ("Biggleswade", "Bedfordshire"),
+    ("Watford", "Hertfordshire"), ("St Albans", "Hertfordshire"), ("Hemel Hempstead", "Hertfordshire"),
+    ("Stevenage", "Hertfordshire"), ("Welwyn Garden City", "Hertfordshire"), ("Hitchin", "Hertfordshire"),
+    ("Hertford", "Hertfordshire"), ("Bishop's Stortford", "Hertfordshire"), ("Cheshunt", "Hertfordshire"),
+    ("Chelmsford", "Essex"), ("Colchester", "Essex"), ("Southend-on-Sea", "Essex"),
+    ("Basildon", "Essex"), ("Harlow", "Essex"), ("Braintree", "Essex"), ("Brentwood", "Essex"),
+    ("Clacton-on-Sea", "Essex"), ("Grays", "Essex"), ("Loughton", "Essex"), ("Witham", "Essex"),
+    ("Milton Keynes", "Buckinghamshire"), ("High Wycombe", "Buckinghamshire"), ("Aylesbury", "Buckinghamshire"),
+    ("Amersham", "Buckinghamshire"), ("Marlow", "Buckinghamshire"),
+    ("Oxford", "Oxfordshire"), ("Banbury", "Oxfordshire"), ("Bicester", "Oxfordshire"),
+    ("Abingdon", "Oxfordshire"), ("Witney", "Oxfordshire"), ("Didcot", "Oxfordshire"),
+    ("Reading", "Berkshire"), ("Slough", "Berkshire"), ("Bracknell", "Berkshire"),
+    ("Maidenhead", "Berkshire"), ("Newbury", "Berkshire"), ("Windsor", "Berkshire"), ("Wokingham", "Berkshire"),
+    ("Guildford", "Surrey"), ("Woking", "Surrey"), ("Epsom", "Surrey"), ("Camberley", "Surrey"),
+    ("Farnham", "Surrey"), ("Redhill", "Surrey"), ("Staines", "Surrey"), ("Leatherhead", "Surrey"),
+    ("Reigate", "Surrey"), ("Esher", "Surrey"),
+    ("Maidstone", "Kent"), ("Canterbury", "Kent"), ("Chatham", "Kent"), ("Gillingham", "Kent"),
+    ("Dover", "Kent"), ("Folkestone", "Kent"), ("Margate", "Kent"), ("Ashford", "Kent"),
+    ("Royal Tunbridge Wells", "Kent"), ("Gravesend", "Kent"), ("Dartford", "Kent"),
+    ("Rochester", "Kent"), ("Sittingbourne", "Kent"), ("Ramsgate", "Kent"), ("Tonbridge", "Kent"),
+    ("Brighton", "East Sussex"), ("Hastings", "East Sussex"), ("Eastbourne", "East Sussex"),
+    ("Bexhill-on-Sea", "East Sussex"), ("Lewes", "East Sussex"), ("Crowborough", "East Sussex"),
+    ("Crawley", "West Sussex"), ("Worthing", "West Sussex"), ("Chichester", "West Sussex"),
+    ("Horsham", "West Sussex"), ("Bognor Regis", "West Sussex"), ("Littlehampton", "West Sussex"),
+    ("Haywards Heath", "West Sussex"), ("East Grinstead", "West Sussex"),
+    ("Southampton", "Hampshire"), ("Portsmouth", "Hampshire"), ("Basingstoke", "Hampshire"),
+    ("Gosport", "Hampshire"), ("Fareham", "Hampshire"), ("Eastleigh", "Hampshire"),
+    ("Aldershot", "Hampshire"), ("Farnborough", "Hampshire"), ("Winchester", "Hampshire"),
+    ("Andover", "Hampshire"), ("Havant", "Hampshire"), ("Waterlooville", "Hampshire"),
+    ("Newport", "Isle of Wight"), ("Ryde", "Isle of Wight"), ("Cowes", "Isle of Wight"),
+    ("Bournemouth", "Dorset"), ("Poole", "Dorset"), ("Weymouth", "Dorset"),
+    ("Dorchester", "Dorset"), ("Christchurch", "Dorset"),
+    ("Swindon", "Wiltshire"), ("Salisbury", "Wiltshire"), ("Chippenham", "Wiltshire"),
+    ("Trowbridge", "Wiltshire"), ("Devizes", "Wiltshire"),
+    ("Taunton", "Somerset"), ("Bath", "Somerset"), ("Yeovil", "Somerset"), ("Bridgwater", "Somerset"),
+    ("Weston-super-Mare", "Somerset"), ("Wells", "Somerset"), ("Frome", "Somerset"), ("Glastonbury", "Somerset"),
+    ("Bristol", "Bristol"),
+    ("Gloucester", "Gloucestershire"), ("Cheltenham", "Gloucestershire"), ("Stroud", "Gloucestershire"),
+    ("Cirencester", "Gloucestershire"), ("Tewkesbury", "Gloucestershire"),
+    ("Exeter", "Devon"), ("Plymouth", "Devon"), ("Torquay", "Devon"), ("Paignton", "Devon"),
+    ("Exmouth", "Devon"), ("Barnstaple", "Devon"), ("Newton Abbot", "Devon"), ("Tiverton", "Devon"),
+    ("Bideford", "Devon"), ("Tavistock", "Devon"),
+    ("Truro", "Cornwall"), ("Falmouth", "Cornwall"), ("Newquay", "Cornwall"), ("Penzance", "Cornwall"),
+    ("St Austell", "Cornwall"), ("Camborne", "Cornwall"), ("Redruth", "Cornwall"), ("Bodmin", "Cornwall"),
+    ("Bude", "Cornwall"), ("St Ives", "Cornwall"),
+    # ---- Scotland ----
+    ("Aberdeen", "Aberdeen City"), ("Peterhead", "Aberdeenshire"), ("Fraserburgh", "Aberdeenshire"),
+    ("Inverurie", "Aberdeenshire"),
+    ("Dundee", "Dundee City"), ("Arbroath", "Angus"), ("Forfar", "Angus"), ("Montrose", "Angus"),
+    ("Edinburgh", "City of Edinburgh"), ("Glasgow", "Glasgow City"),
+    ("Inverness", "Highland"), ("Fort William", "Highland"), ("Nairn", "Highland"),
+    ("Stirling", "Stirling"), ("Perth", "Perth and Kinross"),
+    ("Paisley", "Renfrewshire"), ("Renfrew", "Renfrewshire"),
+    ("Falkirk", "Falkirk"), ("Grangemouth", "Falkirk"),
+    ("Livingston", "West Lothian"), ("Bathgate", "West Lothian"),
+    ("Kilmarnock", "East Ayrshire"), ("Ayr", "South Ayrshire"), ("Irvine", "North Ayrshire"),
+    ("Kilwinning", "North Ayrshire"),
+    ("Dunfermline", "Fife"), ("Kirkcaldy", "Fife"), ("St Andrews", "Fife"), ("Glenrothes", "Fife"),
+    ("Greenock", "Inverclyde"), ("Port Glasgow", "Inverclyde"),
+    ("Motherwell", "North Lanarkshire"), ("Coatbridge", "North Lanarkshire"), ("Airdrie", "North Lanarkshire"),
+    ("Cumbernauld", "North Lanarkshire"), ("Wishaw", "North Lanarkshire"),
+    ("Hamilton", "South Lanarkshire"), ("East Kilbride", "South Lanarkshire"), ("Rutherglen", "South Lanarkshire"),
+    ("Dumfries", "Dumfries and Galloway"), ("Stranraer", "Dumfries and Galloway"),
+    ("Kirkintilloch", "East Dunbartonshire"), ("Bearsden", "East Dunbartonshire"),
+    ("Clydebank", "West Dunbartonshire"), ("Dumbarton", "West Dunbartonshire"),
+    ("Elgin", "Moray"), ("Oban", "Argyll and Bute"), ("Helensburgh", "Argyll and Bute"),
+    ("Galashiels", "Scottish Borders"), ("Hawick", "Scottish Borders"),
+    ("Musselburgh", "East Lothian"), ("Dalkeith", "Midlothian"),
+    # ---- Wales ----
+    ("Cardiff", "Cardiff"), ("Swansea", "Swansea"), ("Newport", "Gwent"), ("Wrexham", "Wrexham"),
+    ("Barry", "Vale of Glamorgan"),
+    ("Neath", "Neath Port Talbot"), ("Port Talbot", "Neath Port Talbot"),
+    ("Cwmbran", "Torfaen"), ("Pontypool", "Torfaen"),
+    ("Bridgend", "Bridgend"),
+    ("Llanelli", "Carmarthenshire"), ("Carmarthen", "Carmarthenshire"),
+    ("Merthyr Tydfil", "Merthyr Tydfil"),
+    ("Pontypridd", "Rhondda Cynon Taf"), ("Aberdare", "Rhondda Cynon Taf"),
+    ("Aberystwyth", "Ceredigion"), ("Cardigan", "Ceredigion"),
+    ("Bangor", "Gwynedd"), ("Caernarfon", "Gwynedd"),
+    ("Llandudno", "Conwy"), ("Colwyn Bay", "Conwy"),
+    ("Rhyl", "Denbighshire"), ("Prestatyn", "Denbighshire"),
+    ("Ebbw Vale", "Blaenau Gwent"), ("Caerphilly", "Caerphilly"),
+    ("Haverfordwest", "Pembrokeshire"), ("Pembroke", "Pembrokeshire"), ("Milford Haven", "Pembrokeshire"),
+    ("Newtown", "Powys"), ("Brecon", "Powys"),
+]), key=lambda t: t[0])
 
 html = """<!DOCTYPE html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><style>
@@ -470,6 +611,21 @@ html = """<!DOCTYPE html>
        padding:15px 36px;cursor:pointer;transition:all .14s;box-shadow:0 6px 18px rgba(192,20,31,.24);}
   #startbtn:hover{background:#a5101a;transform:translateY(-2px);box-shadow:0 9px 22px rgba(192,20,31,.30);}
   .intro-note{font-size:12px;color:var(--muted);margin:18px 0 0;letter-spacing:.03em;text-align:center;}
+  .hometown-box{margin:2px 0 20px;}
+  .hometown-label{display:block;font-size:13px;color:var(--ink);font-weight:600;margin-bottom:7px;}
+  .hometown-label .opt-tag{color:var(--muted);font-weight:400;}
+  #hometown{width:100%%;padding:11px 14px;font-size:15px;border:1.5px solid var(--line);border-radius:10px;
+       background:var(--card);color:var(--ink);outline:none;transition:border-color .12s;}
+  #hometown:focus{border-color:var(--accent);}
+  .hometown-note{font-size:11.5px;color:var(--muted);line-height:1.45;margin:8px 0 0;}
+  .combo{position:relative;}
+  .combo-list{list-style:none;margin:5px 0 0;padding:4px;position:absolute;left:0;right:0;z-index:50;
+       background:var(--card);border:1.5px solid var(--line);border-radius:10px;box-shadow:0 12px 28px rgba(0,0,0,.16);
+       max-height:230px;overflow-y:auto;display:none;text-align:left;}
+  .combo-item{padding:9px 12px;font-size:14px;border-radius:7px;cursor:pointer;color:var(--ink);}
+  .combo-item .cc{color:var(--muted);font-weight:400;}
+  .combo-item:hover,.combo-item.active{background:#fdf0f0;color:var(--accent);}
+  .combo-item:hover .cc,.combo-item.active .cc{color:var(--accent);}
   .aboutwrap{position:relative;display:inline-block;vertical-align:middle;}
   .aboutbtn{color:#0a7a63;cursor:help;font-size:15px;line-height:1;}
   .aboutinfo{display:none;position:absolute;bottom:150%%;left:50%%;transform:translateX(-50%%);width:430px;max-width:88vw;
@@ -518,8 +674,16 @@ html = """<!DOCTYPE html>
     <div class="intro-right">
       <p class="intro-lead">How you say a few everyday words, and what you call bread, your evening meal, or a splinter, quietly gives away where in Britain you&rsquo;re from.</p>
       <p class="intro-body">This short quiz asks how <i>you</i> speak. After each answer a heat map lights up, showing where in Great Britain that feature is common, all drawn from published dialect research. Work through them and see which corner of the map your speech belongs to.</p>
+      <div class="hometown-box">
+        <label class="hometown-label" for="hometown">If you grew up in Great Britain, where? <span class="opt-tag">(optional)</span></label>
+        <div class="combo">
+          <input type="text" id="hometown" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" placeholder="Start typing your town&hellip;">
+          <ul id="townlist" class="combo-list" role="listbox"></ul>
+        </div>
+        <p class="hometown-note">This does <b>not</b> affect your result &mdash; it&rsquo;s collected only to help train and improve future versions of the quiz.</p>
+      </div>
       <button id="startbtn">Start the quiz &rarr;</button>
-      <p class="intro-note"><span class="aboutwrap"><span class="aboutbtn">&#9432;</span><span class="aboutinfo">This is a pixel-art version of the British dialect map. It was made by <b>Alan Levita</b> during a research internship at the Intellectual Forum at Jesus College, Cambridge, drawing on the research of <b>Prof. Bert Vaux</b> of King&rsquo;s College, Cambridge. Bert&rsquo;s work formed the basis for the original <i>New York Times</i> dialect quiz.<br><br>Your answers are used to estimate roughly where you&rsquo;re from. All the maps were redrawn by hand in a pixel-art style, based on isoglosses from published research on British dialects.</span></span> Powered by the Intellectual Forum at Jesus College, University of Cambridge</p>
+      <p class="intro-note"><span class="aboutwrap"><span class="aboutbtn">&#9432;</span><span class="aboutinfo">This is a pixel-art version of the British dialect map. It was made by <b>Alan Levita</b> during a research internship at the Intellectual Forum at Jesus College, Cambridge, drawing on the research of <b>Prof. Bert Vaux</b> of King&rsquo;s College, Cambridge. Bert&rsquo;s work formed the basis for the original <i>New York Times</i> dialect quiz.<br><br>Your answers are used to estimate roughly where you&rsquo;re from. All the maps were redrawn by hand in a pixel-art style, based on isoglosses from published research on British dialects.</span></span> Powered by the Intellectual Forum at Jesus College, Cambridge</p>
     </div>
     </div>
   </div>
@@ -550,11 +714,15 @@ html = """<!DOCTYPE html>
 </div>
 <script>
 const W=%d,H_=%d,CELL=5,GAP=1;
-const grids=%s;
+// The heat-map surfaces are ~1.9 MB. Kept as a STRING and JSON.parse()d lazily so
+// the landing page becomes interactive instantly instead of blocking on a giant
+// object-literal parse. (JSON.parse of a string is far faster than the JS engine
+// evaluating an equivalent inline object literal, and here it's deferred entirely.)
+const GRIDS_JSON=%s; let grids=null;
 const land=%s,cities=%s,cg=%s,names=%s;
 const regionGrid=%s,regionNames=%s;
 const dialectGrid=%s,dialectColors=%s;
-const HIRES=%s;
+const TOWNS=%s;   // GB towns/cities for the hometown type-ahead
 const ICELOLLY_IMG=%s;
 const BREAD_IMG=%s;
 const QUESTIONS=[
@@ -645,9 +813,14 @@ const cv=document.getElementById("cv"),cx=cv.getContext("2d");cv.width=W*CELL;cv
 let SHOWN=null;
 // national average of each map (over land), so hover can spot LOCALLY distinctive words
 const gridMean={};
-for(const k in grids){let s=0,n=0;const g=grids[k];
-  for(let r=0;r<H_;r++)for(let c=0;c<W;c++){const v=g[r][c];if(v!=null){s+=v;n++;}}
-  gridMean[k]=n?s/n:1e-6;}
+// parse the big heat-map data + compute means on first use (quiz start), not on page load
+function ensureGrids(){
+  if(grids) return;
+  grids=JSON.parse(GRIDS_JSON);
+  for(const k in grids){let s=0,n=0;const g=grids[k];
+    for(let r=0;r<H_;r++)for(let c=0;c<W;c++){const v=g[r][c];if(v!=null){s+=v;n++;}}
+    gridMean[k]=n?s/n:1e-6;}
+}
 
 function clearRight(prompt){
   // no map yet -> hide the whole right panel and let the left frame center on the page
@@ -938,24 +1111,25 @@ cv.addEventListener("click",(e)=>{
       "<br><span class='ipa'>/f&#650;t/ &middot; /"+cut+"/</span>";}
 });
 
-// ---- landing page: pixel map of Great Britain's major dialect groups ----
+// ---- landing page: chunky 8-bit pixel map, same style as the quiz maps ----
 function drawMini(){
-  const rows=HIRES, Hh=rows.length, Wh=rows[0].length, M=2;   // fine county-shaped raster
-  const mc=document.getElementById("introcv"); mc.width=Wh*M; mc.height=Hh*M;
-  mc.style.width=(Wh*M/2)+"px";   // height is auto (CSS) -> scales proportionally, stays responsive
+  const M=5, GAP2=1;   // same chunky pixel cells + subtle grid as the quiz heat maps
+  const mc=document.getElementById("introcv"); mc.width=W*M; mc.height=H_*M;
+  mc.style.width="300px";   // height is auto (CSS) -> scales proportionally, stays responsive
   const mx=mc.getContext("2d");
-  for(let r=0;r<Hh;r++){const row=rows[r];for(let c=0;c<Wh;c++){
-    const ch=row[c]; if(ch===".")continue;
-    const col=dialectColors[+ch][1];
+  mx.clearRect(0,0,mc.width,mc.height);
+  for(let r=0;r<H_;r++)for(let c=0;c<W;c++){
+    const di=dialectGrid[r][c]; if(di<0) continue;
+    mx.fillStyle="#c9c9d2"; mx.fillRect(c*M,r*M,M,M);            // grey pixel grid, like the quiz
+    const col=dialectColors[di][1];
     mx.fillStyle="rgb("+col[0]+","+col[1]+","+col[2]+")";
-    mx.fillRect(c*M,r*M,M,M);
-  }}
+    mx.fillRect(c*M,r*M,M-GAP2,M-GAP2);
+  }
   // hover/touch -> name the dialect group under the cursor (replaces the old static key)
   const tip=document.getElementById("introtip"), cap=document.getElementById("introcap");
   function miniTip(clientX,clientY){const rect=mc.getBoundingClientRect();
-    const c=Math.floor((clientX-rect.left)/(rect.width/Wh)), r=Math.floor((clientY-rect.top)/(rect.height/Hh));
-    const ch=(r>=0&&r<Hh&&c>=0&&c<Wh)?rows[r][c]:".";
-    const di=(ch===".")?-1:+ch;
+    const c=Math.floor((clientX-rect.left)/(rect.width/W)), r=Math.floor((clientY-rect.top)/(rect.height/H_));
+    const di=(r>=0&&r<H_&&c>=0&&c<W)?dialectGrid[r][c]:-1;
     if(di>=0){const [nm,col]=dialectColors[di];
       tip.textContent=nm; tip.style.background="rgb("+col[0]+","+col[1]+","+col[2]+")";
       tip.style.left=(clientX-rect.left)+"px"; tip.style.top=(clientY-rect.top)+"px"; tip.style.opacity=1;
@@ -966,7 +1140,22 @@ function drawMini(){
   mc.ontouchstart=(e)=>{if(e.touches[0])miniTip(e.touches[0].clientX,e.touches[0].clientY);};
   mc.ontouchmove=(e)=>{if(e.touches[0]){e.preventDefault();miniTip(e.touches[0].clientX,e.touches[0].clientY);}};
 }
+// ---- hometown: captured for FUTURE model training only, never used for the result ----
+// Right now it's just saved in the visitor's own browser (localStorage). To actually
+// collect it, wire the fetch() below up to a backend endpoint (Supabase/Formspree/etc.).
+let hometown="";
+function recordHometown(){
+  const el=document.getElementById("hometown");
+  hometown=((el&&el.value)||"").trim();
+  if(!hometown) return;
+  try{ localStorage.setItem("gbdq_hometown", hometown); }catch(e){}
+  // TODO(backend): uncomment + point at your endpoint to collect hometowns for training
+  // fetch("https://YOUR-ENDPOINT", {method:"POST", headers:{"Content-Type":"application/json"},
+  //   body:JSON.stringify({hometown, ts:Date.now()})}).catch(()=>{});
+}
 function startQuiz(){
+  recordHometown();                                      // grab hometown before leaving the intro
+  ensureGrids();                                          // make sure the heat-map data is parsed
   document.getElementById("intro").style.display="none";
   document.querySelector("header").style.display="";     // show the title bar during the quiz
   document.getElementById("progresswrap").style.display="";
@@ -984,6 +1173,37 @@ function showIntro(){
   document.getElementById("restart").style.display="none";
 }
 document.getElementById("startbtn").onclick=startQuiz;
+// ---- hometown type-ahead: filter TOWNS as you type, click/arrow-key to select ----
+(function(){
+  const inp=document.getElementById("hometown"), list=document.getElementById("townlist");
+  if(!inp||!list) return;
+  let matches=[], active=-1;
+  function close(){ list.style.display="none"; list.innerHTML=""; active=-1; inp.setAttribute("aria-expanded","false"); }
+  function paint(){ [...list.children].forEach((li,i)=>li.classList.toggle("active",i===active)); }
+  function choose(t){ inp.value=t[0]+", "+t[1]; close(); }
+  function render(){
+    const q=inp.value.trim().toLowerCase();
+    if(!q){ close(); return; }
+    matches=TOWNS.filter(t=>t[0].toLowerCase().includes(q)||t[1].toLowerCase().includes(q))
+                 .sort((a,b)=>(a[0].toLowerCase().startsWith(q)?0:1)-(b[0].toLowerCase().startsWith(q)?0:1))
+                 .slice(0,8);
+    if(!matches.length){ close(); return; }
+    list.innerHTML=matches.map((t,i)=>"<li class='combo-item' role='option' data-i='"+i+"'><b>"+t[0]+"</b><span class='cc'>, "+t[1]+"</span></li>").join("");
+    list.style.display="block"; inp.setAttribute("aria-expanded","true"); active=-1;
+  }
+  inp.addEventListener("input", render);
+  inp.addEventListener("keydown",(e)=>{
+    if(list.style.display!=="block") return;
+    if(e.key==="ArrowDown"){e.preventDefault();active=Math.min(active+1,matches.length-1);paint();}
+    else if(e.key==="ArrowUp"){e.preventDefault();active=Math.max(active-1,0);paint();}
+    else if(e.key==="Enter"&&active>=0){e.preventDefault();choose(matches[active]);}
+    else if(e.key==="Escape"){close();}
+  });
+  // mousedown (not click) so it fires before the input blurs; also covers touch taps
+  list.addEventListener("mousedown",(e)=>{const li=e.target.closest(".combo-item"); if(li){e.preventDefault();choose(matches[+li.dataset.i]);}});
+  inp.addEventListener("blur",()=>setTimeout(close,150));
+  document.addEventListener("click",(e)=>{ if(!e.target.closest(".combo")) close(); });
+})();
 // touch: tap the (i) to open its popup (phones have no hover); tap elsewhere to close
 document.getElementById("infobtn").addEventListener("click",function(e){e.stopPropagation();document.getElementById("infowrap").classList.toggle("open");});
 var _ab=document.querySelector(".aboutbtn");
@@ -991,12 +1211,15 @@ if(_ab)_ab.addEventListener("click",function(e){e.stopPropagation();this.closest
 document.addEventListener("click",function(){document.getElementById("infowrap").classList.remove("open");var aw=document.querySelector(".aboutwrap");if(aw)aw.classList.remove("open");});
 drawMini();
 showIntro();
+// landing is now interactive; parse the heavy heat-map data in the background so it's
+// ready by the time the user taps "Start" (startQuiz also calls this, just in case)
+setTimeout(ensureGrids, 60);
 </script></body></html>""" % (
-    W, H, json.dumps(grids_all), json.dumps(landj),
+    W, H, json.dumps(json.dumps(grids_all)), json.dumps(landj),
     json.dumps(cities), json.dumps(cg.tolist()), json.dumps(names),
     json.dumps(region_grid), json.dumps(region_names),
     json.dumps(dialect_grid), json.dumps(dialect_colors),
-    json.dumps(hires_dialect),
+    json.dumps(GB_TOWNS),
     json.dumps(icelolly_uri), json.dumps(bread_uri),
 )
 
