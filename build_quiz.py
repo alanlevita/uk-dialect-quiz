@@ -62,6 +62,13 @@ def decoded_surface(key, lo, hi):
     return np.where(land, lo + np.nan_to_num(p) * (hi - lo), 0.0)
 
 
+def decoded_pct_surface(key):
+    # like decoded_surface, but the decoded value already IS the true 0-1 percentage
+    # (matched against the source legend's own %-bin colours), so no min-max rescale.
+    a = np.array([[v if v is not None else np.nan for v in row] for row in _decoded[key]], dtype=float)
+    return np.where(land, np.nan_to_num(a), 0.0)
+
+
 def is_val(v):
     return v is not None and not (isinstance(v, float) and np.isnan(v))
 
@@ -309,6 +316,7 @@ grids_all = {"q1": grid_json(q1), "tvd": grid_json(decoded_surface("tvd", 0.05, 
              "giveitme": grid_json(decoded_surface("giveitme", 0.12, 0.82)),
              "bookspook": grid_json(decoded_surface("bookspook", 0.10, 0.85)),
              "stirstare": grid_json(surface(NURSESQUARE)),
+             "scone": grid_json(decoded_pct_surface("scone")),
              "northforce": grid_json(decoded_surface("northforce", 0.10, 0.85)),
              "forcecure": grid_json(decoded_surface("forcecure", 0.10, 0.85)),
              # store as P(rhyme = short a) so "yes, they rhyme" -> North (matches the option)
@@ -322,6 +330,19 @@ grids_all = {"q1": grid_json(q1), "tvd": grid_json(decoded_surface("tvd", 0.05, 
              "lollyice": grid_json(point_blob([(50.7, 91.3, 88), (47.8, 95.0, 76)], 3.0))}
 for term, vm in BREAD.items():
     grids_all[term] = grid_json(surface(vm))
+
+# names for the playground chasing game (tag-game.jpg, Starkey Comics): each region of
+# the source map is a flat colour naming one variant, decoded by nearest-colour match per
+# cell (not a Gi* gradient), using nearest-VALID-pixel lookup rather than a windowed
+# majority vote so small pockets (tip, dobby, hit, had) don't get washed out by bigger
+# neighbours. "catch/chase" turned out to be an Ireland-only term with ~0 presence in GB,
+# so it's dropped. Two small pockets (Caithness/Orkney = "tag"; Anglesey = "tip") are
+# hand-corrected in the decode script: the comic draws the far north and NW Wales with
+# enough distortion that the whole-map linear registration lands a few grid cells off,
+# confirmed by direct pixel inspection of the source image.
+TAG_TERMS = ["tag", "tick", "tip", "tig", "tiggy", "tuggy", "it", "hit", "had", "touch", "dobby"]
+for term in TAG_TERMS:
+    grids_all["tag_" + term] = grid_json(decoded_pct_surface("tag_" + term))
 
 # "I don't have a word for this" = the NEGATIVE of all the variants combined.
 # Combine the listed terms per-pixel (max = "where ANY of these words is common"),
@@ -347,6 +368,7 @@ def negative_union(terms):
 
 grids_all["none_splinter"] = negative_union(["splinter", "spelk", "spell", "shiver", "sliver"])
 grids_all["none_bread"] = negative_union(list(BREAD.keys()))
+grids_all["none_tag"] = negative_union(["tag_" + t for t in TAG_TERMS])
 
 landj = [[bool(land[r][c]) for c in range(W)] for r in range(H)]
 
@@ -364,6 +386,7 @@ PLACES = [
     ("Birmingham", "Brummie", 60, 105), ("Stoke", "the Potteries", 57, 97),
     ("Nottingham", "the East Midlands", 67, 98),
     ("London", "", 75, 120), ("Norwich", "East Anglia", 88, 103),
+    ("Margate", "Kent", 86, 122),
     ("Bristol", "the West Country", 54, 120), ("Exeter", "the West Country", 46, 131),
     ("Edinburgh", "Scotland", 49, 53), ("Glasgow", "Scotland", 40, 55),
     ("Aberdeen", "", 58, 35), ("Cardiff", "Wales", 49, 120),
@@ -828,6 +851,10 @@ const QUESTIONS=[
    info:"trapbath",infoLabel:"the trap&ndash;bath split",
    opts:[{label:"Yes, they rhyme",v:1,word:"rhyme (short a)"},
          {label:"No, they sound different",v:0,word:"split (long a)"}]},
+  {id:"scone",text:"Does <i>scone</i> rhyme with <i>gone</i> or <i>bone</i>?",tag:"real data",real:true,metric:"pct",
+   info:"scone",infoLabel:"how you say &lsquo;scone&rsquo;",
+   opts:[{label:"Gone (&ldquo;skon&rdquo;)",v:1,word:"rhyme it with gone"},
+         {label:"Bone / cone (&ldquo;skohn&rdquo;)",v:0,word:"rhyme it with bone"}]},
   // binary + the paper gives real proportions -> metric "pct"
   {id:"tvd",text:"What do you call your evening meal?",tag:"real data",real:true,metric:"pct",
    info:"tvd",infoLabel:"tea vs dinner",
@@ -869,6 +896,22 @@ const QUESTIONS=[
      {label:"I use both interchangeably",v:"both",term:"both",grid:"lollyice"},
      {label:"Other term (ice pop, popsicle, etc.)",v:"other",term:"another term",none:true},
      {label:"I have no word for this",v:"none",term:"no word for this",none:true}
+   ]},
+  {id:"tag",text:"This children&rsquo;s chasing game is called &#95;&#95;&#95;&#95;",tag:"real data (Starkey Comics dialect survey)",real:true,phon:false,multi:true,metric:"prevalence",
+   info:"tag",infoLabel:"names for the chasing game",
+   opts:[
+     {label:"Tag",v:"tag",term:"tag",grid:"tag_tag"},
+     {label:"Tick",v:"tick",term:"tick",grid:"tag_tick"},
+     {label:"Tip",v:"tip",term:"tip",grid:"tag_tip"},
+     {label:"Tig",v:"tig",term:"tig",grid:"tag_tig"},
+     {label:"Tiggy",v:"tiggy",term:"tiggy",grid:"tag_tiggy"},
+     {label:"Tuggy",v:"tuggy",term:"tuggy",grid:"tag_tuggy"},
+     {label:"It",v:"it",term:"it",grid:"tag_it"},
+     {label:"Hit",v:"hit",term:"hit",grid:"tag_hit"},
+     {label:"Had",v:"had",term:"had",grid:"tag_had"},
+     {label:"Touch",v:"touch",term:"touch",grid:"tag_touch"},
+     {label:"Dobby",v:"dobby",term:"dobby",grid:"tag_dobby"},
+     {label:"I don&rsquo;t have a word for this",v:"none",term:"no word for this",grid:"none_tag",excl:true,none:true}
    ]}
 ];
 // foot-strut rate is still only an estimate -> don't fake precision at the extremes
@@ -887,16 +930,19 @@ const ETYM={
   tvd:"<b>tea vs dinner</b> &mdash; the name for the evening meal. <i>Tea</i> is the northern (and traditionally working-class) term; <i>dinner</i> the southern one, and historically the &lsquo;U&rsquo;/upper-class usage (Ross, 1954). So it carries a class edge as well as a regional one.",
   bookspook:"<b>book vs spook</b> &mdash; in some accents the <i>-ook</i> words (book, cook, look) keep the old long vowel /u&#720;/, so <i>book</i> is [bu&#720;k] and rhymes with <i>spook</i> &mdash; putting it in the GOOSE set rather than FOOT. Traditional in the North East and Stoke (and once Liverpool); Scotland has no foot&ndash;goose distinction at all.",
   nursesquare:"<b>The NURSE&ndash;SQUARE merger</b> &mdash; in some accents the vowels of NURSE (<i>stir, fur, her</i>) and SQUARE (<i>stare, fair, hair</i>) fall together, so <i>stir</i> and <i>stare</i> (or <i>fur</i> and <i>fair</i>) rhyme. It is long-established and best-documented in Liverpool / Merseyside and the North West, and is now also strong &mdash; and apparently spreading &mdash; along the east coast (Hull, Teesside). An older East-Midlands merger has largely faded, though north-east Lincolnshire still has it.",
+  scone:"<b>scone</b> &mdash; the great teatime shibboleth: does it rhyme with <i>gone</i> (/sk&#594;n/) or with <i>bone</i>/<i>cone</i> (/sko&#650;n/)? Most of Britain &mdash; Scotland and the North especially &mdash; rhymes it with <i>gone</i>. The <i>bone</i> pronunciation is the local norm in the <b>East Midlands</b> (Nottingham, Derby, Leicester), with the far South West leaning that way a little too.",
   northforce:"<b>The NORTH&ndash;FORCE merger</b> &mdash; whether <i>horse</i> and <i>hoarse</i> (or <i>for</i> and <i>four</i>, <i>war</i> and <i>wore</i>) sound identical. Most of England and Wales merged them long ago, so they rhyme; <b>Scotland</b> keeps them clearly distinct, as do pockets around <b>Manchester</b> and Merseyside.",
   forcecure:"<b>The CURE&ndash;FORCE merger</b> &mdash; whether <i>poor</i> and <i>pour</i> (or <i>sure</i> and <i>shore</i>, <i>tour</i> and <i>tore</i>) sound identical. Across most of England they have merged, so they rhyme; the older distinct <i>poor</i>/<i>sure</i> vowel /&#650;&#601;/ survives in <b>Scotland</b>, the <b>North East</b>, and <b>West Yorkshire</b>.",
   trapbath:"<b>The trap&ndash;bath split</b> &mdash; in the 18th century southern English lengthened the <i>a</i> in a set of words (<i>bath, grass, last, dance</i>) to /&#593;&#720;/, splitting them from TRAP words (<i>cat, trap</i>). The North, Wales and Scotland kept the short /a/ &mdash; so a northerner says [ba&#952;], a southerner [b&#593;&#720;&#952;]. It&rsquo;s one of the sharpest north&ndash;south markers.",
   splinter:"<b>Words for a splinter</b> of wood in the skin. <b>Splinter</b> is the standard nationwide; <b>spelk</b> (from Old Norse / Old English <i>spelc</i>) belongs to the North East &amp; the Borders; <b>spell</b> is northern; <b>shiver</b> is East Anglian; <b>sliver</b> is a South East word.",
   giveitme:"<b>&lsquo;Give it me&rsquo;</b> &mdash; the &lsquo;alternative double-object&rsquo; dative: the theme (<i>it</i>) comes before the goal (<i>me</i>) with no <i>to</i> &mdash; <i>give it me</i> rather than <i>give it to me</i> or <i>give me it</i>. It&rsquo;s a North West &amp; Midlands feature (strongest around Manchester and the Potteries), thinning towards the North East and the South.",
   lolly:"<b>Ice lolly vs lolly ice</b> &mdash; <i>ice lolly</i> is the standard British term; <i>lolly ice</i> (the words reversed) is the well-known Merseyside / Liverpool (&lsquo;Scouse&rsquo;) form. Further afield you&rsquo;ll hear <i>ice pop</i> (Ireland, Scotland) or <i>popsicle</i> (North America)."
+,
+  tag:"<b>Names for tag/it</b> &mdash; <i>tig</i> covers most of England, Scotland &amp; Wales; <i>it</i> is the South East&rsquo;s word instead of <i>tig</i>. Distinct local pockets survive within that: <i>tiggy</i> and <i>tuggy</i> side by side around Durham &amp; North Yorkshire, <i>tick</i> and a tiny <i>tip</i> pocket in North Wales, <i>touch</i> around Birmingham and in the South West, <i>had</i> on the Suffolk/Essex coast, <i>hit</i> on the South Devon coast, and <i>dobby</i> &mdash; a well-known Nottinghamshire/South Yorkshire term &mdash; in a tight pocket around Sheffield."
 };
 // only etymology sources are cited (the maps are our own recreations, not originals)
 const ETYM_SRC="Wiktionary";
-const SRC={ splinter:"Wiktionary" };
+const SRC={ splinter:"Wiktionary", tag:"Starkey Comics" };
 // lexical prevalence: a relative band, no misleading headcount
 function band(v){return v>=0.5?"the main word(s) here":v>=0.3?"common here":v>=0.15?"one of several here":"rarely used here";}
 // for the "no word" negative map: high v = the words are absent here
