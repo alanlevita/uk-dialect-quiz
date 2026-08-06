@@ -179,6 +179,11 @@ BREAD = {
                 "Glamorgan": 35, "Monmouthshire": 40, "Carmarthenshire": 30, "Pembrokeshire": 30,
                 "Cardiganshire": 28, "Brecknockshire": 28, "Radnorshire": 28,
                 "Middlesex": 66, "Gloucestershire": 56}),
+    # a strongly NE-Scotland (Doric) word, peaking on the Aberdeenshire coast and
+    # fading south through Angus/Perthshire; negligible anywhere south of the Highlands
+    "softie": mk(0, [(NSCOT, 4)],
+                 {"Aberdeenshire": 78, "Banffshire": 58, "Kincardineshire": 52,
+                  "Morayshire": 30, "Angus": 22, "Perthshire": 10}),
 }
 
 # tea vs dinner (name for the evening meal): P(tea). Binary, and the paper gives
@@ -319,6 +324,13 @@ grids_all = {"q1": grid_json(q1), "tvd": grid_json(decoded_surface("tvd", 0.05, 
              "scone": grid_json(decoded_pct_surface("scone")),
              "northforce": grid_json(decoded_surface("northforce", 0.10, 0.85)),
              "forcecure": grid_json(decoded_surface("forcecure", 0.10, 0.85)),
+             "youse": grid_json(decoded_surface("youse", 0.20, 0.92)),
+             "thfronting": grid_json(decoded_surface("thfronting", 0.04, 0.94)),
+             "skiveclass_bunk": grid_json(decoded_pct_surface("skiveclass_bunk")),
+             "skiveclass_hookey": grid_json(decoded_pct_surface("skiveclass_hookey")),
+             "skiveclass_skip": grid_json(decoded_pct_surface("skiveclass_skip")),
+             "skiveclass_skive": grid_json(decoded_pct_surface("skiveclass_skive")),
+             "skiveclass_wag": grid_json(decoded_pct_surface("skiveclass_wag")),
              # store as P(rhyme = short a) so "yes, they rhyme" -> North (matches the option)
              "trapbath": grid_json(1 - surface(TRAPBATH)),
              "spelk": grid_json(surface(SPELK)), "spell": grid_json(surface(SPELL)),
@@ -369,6 +381,7 @@ def negative_union(terms):
 grids_all["none_splinter"] = negative_union(["splinter", "spelk", "spell", "shiver", "sliver"])
 grids_all["none_bread"] = negative_union(list(BREAD.keys()))
 grids_all["none_tag"] = negative_union(["tag_" + t for t in TAG_TERMS])
+grids_all["none_skiveclass"] = negative_union(["skiveclass_" + t for t in ["bunk", "hookey", "skip", "skive", "wag"]])
 
 landj = [[bool(land[r][c]) for c in range(W)] for r in range(H)]
 
@@ -415,21 +428,43 @@ for ri, (rn, cl) in enumerate(REGIONS.items()):
 region_grid = [[(county_region.get(names[cg[r][c]], -1) if land[r][c] else -1)
                 for c in range(W)] for r in range(H)]
 
-# ---- major dialect GROUPS (for the landing-page teaser), grouped & coloured to
-# match dialect-map.jpg: Scotland (blue), the North (purple), the Midlands
-# (orange), East Anglia (yellow), the South (red), the West Country (green),
-# Wales (teal-green). Great Britain only (the grid has no Ireland).
-# muted, atlas-style colours (less bright than before)
+# ---- fine-grained dialect GROUPS (for the landing-page teaser), colours sampled
+# directly off updated-landing-page-map.jpg (Starkey-Comics-style British Isles
+# dialect map). County-level base regions, with small city-centred "patches"
+# (Geordie, Brummie, Scouse, ...) stamped on top for the areas the source map
+# calls out individually. Great Britain only (the grid has no Ireland/Man).
+# NOTE: Highland/Lowland Scottish boundary pulled a bit further south than
+# NSCOT/CSCOT's own split (Perthshire/Stirlingshire are visually Lowland-shaded
+# on the source map even though they're grouped under "Highland" everywhere
+# else in this file) so the two areas match the source's proportions.
+_HL_SOUTH = {"Perthshire", "Stirlingshire", "Argyllshire"}
+_HIGHLAND = [c for c in NSCOT if c not in _HL_SOUTH]
+_LOWLAND = [c for c in CSCOT if c != "Lanarkshire"] + SSCOT + list(_HL_SOUTH - {"Argyllshire"})
 DIALECT = [
-    ("Scotland", SCOT, (78, 110, 168)),
-    ("The North", NORTH, (146, 100, 156)),
-    ("The Midlands", EMIDS + WMIDS, (216, 146, 80)),
-    ("East Anglia", EANG + ["Essex"], (212, 192, 110)),
-    ("The South", ["Bedfordshire", "Berkshire", "Buckinghamshire", "Hampshire", "Hertfordshire",
-                   "Kent", "Middlesex", "Oxfordshire", "Surrey", "Sussex"], (190, 96, 100)),
-    ("The West Country", ["Cornwall", "Devon", "Dorset", "Gloucestershire", "Somerset", "Wiltshire"],
-     (92, 152, 104)),
-    ("Wales", WALES, (60, 128, 116)),
+    ("Highland Scottish", _HIGHLAND, (0, 0, 82)),
+    ("Lowland Scottish", _LOWLAND + ["Lanarkshire", "Argyllshire"], (2, 0, 128)),
+    ("Cumbrian", ["Cumberland", "Westmorland"], (93, 68, 96)),
+    ("Northumbrian", ["Northumberland"], (104, 69, 107)),
+    ("Pitmatic", ["Durham"], (128, 68, 127)),
+    ("Yorkshire", ["Yorkshire"], (224, 116, 224)),
+    ("Lancashire", ["Lancashire", "Cheshire"], (222, 138, 223)),
+    ("West Midlands", WMIDS, (134, 75, 39)),
+    ("East Midlands", ["Derbyshire", "Leicestershire", "Nottinghamshire", "Rutland", "Lincolnshire"],
+     (232, 112, 40)),
+    ("South-East Midlands", ["Northamptonshire", "Bedfordshire", "Buckinghamshire"], (233, 126, 63)),
+    ("Cambridgeshire", ["Cambridgeshire", "Huntingdonshire"], (180, 169, 0)),
+    ("Norfolk", ["Norfolk"], (253, 237, 104)),
+    ("Suffolk", ["Suffolk"], (225, 210, 120)),
+    ("Essex", ["Essex"], (235, 225, 180)),
+    ("South East", ["Surrey", "Hampshire", "Berkshire", "Oxfordshire", "Hertfordshire"], (56, 0, 0)),
+    ("Sussex", ["Sussex"], (96, 1, 0)),
+    ("Kentish", ["Kent"], (115, 1, 1)),
+    ("London", ["Middlesex"], (169, 14, 18)),
+    ("West Country", ["Dorset", "Wiltshire", "Gloucestershire"], (0, 46, 0)),
+    ("Somerset", ["Somerset"], (1, 92, 0)),
+    ("Devonshire", ["Devon"], (0, 113, 0)),
+    ("Anglo-Cornish", ["Cornwall"], (0, 130, 0)),
+    ("Welsh", WALES, (67, 44, 28)),
 ]
 county_dialect = {}
 for di, (dn, cl, _col) in enumerate(DIALECT):
@@ -439,8 +474,35 @@ dialect_grid = [[(county_dialect.get(names[cg[r][c]], -1) if land[r][c] else -1)
                  for c in range(W)] for r in range(H)]
 dialect_colors = [[dn, list(col)] for dn, _cl, col in DIALECT]
 
-# (The landing map now uses the same chunky low-res dialect_grid as the quiz maps,
-# so the old high-res county-polygon rasterization is no longer needed.)
+# ---- city-centred patches: small named dialects the source map calls out
+# individually inside a larger county (Geordie inside Northumberland, Brummie
+# inside the West Midlands, ...). Each is a distance-from-city falloff LIMITED
+# to a set of real counties, so it follows the county's actual coastline/border
+# instead of stamping a bare geometric circle across it.
+PATCHES = [
+    ("Glaswegian", 39.8, 54.6, 7, (35, 36, 176), ["Lanarkshire", "Renfrewshire", "Dunbartonshire"]),
+    ("Geordie", 62.6, 67.9, 7, (126, 68, 119), ["Northumberland"]),
+    ("Mackem", 63, 69, 5, (193, 68, 193), ["Durham"]),
+    ("Tesside", 64, 74, 5, (227, 78, 226), ["Durham", "Yorkshire"]),
+    ("Scouse", 50.7, 91.3, 8, (226, 172, 225), ["Lancashire", "Cheshire"]),
+    ("Mancunian", 57.2, 90.2, 8, (227, 200, 226), ["Lancashire", "Cheshire"]),
+    ("Brummie", 60.2, 105.0, 8, (160, 85, 37), ["Warwickshire", "Worcestershire", "Staffordshire"]),
+    ("Coventry", 66, 103, 5, (180, 93, 38), ["Warwickshire"]),
+    ("Potteries", 57, 97, 5, (207, 101, 36), ["Staffordshire"]),
+    ("Bristolian", 54.2, 120.4, 5, (0, 58, 0), ["Gloucestershire", "Somerset"]),
+    ("Cardiff", 49.1, 120.0, 5, (101, 66, 44), ["Glamorgan", "Monmouthshire"]),
+    ("Estuary", 84, 118, 6, (188, 0, 0), ["Essex", "Kent"]),
+    ("Cockney", 77, 120, 4, (244, 26, 27), ["Middlesex", "Essex"]),
+]
+dialect_colors += [[pn, list(pcol)] for pn, _c, _r, _rad, pcol, _cl in PATCHES]
+for pi, (pn, pc, pr, prad, _pcol, allowed) in enumerate(PATCHES):
+    di = len(DIALECT) + pi
+    allowed_set = set(allowed)
+    for r in range(H):
+        for c in range(W):
+            if (land[r][c] and (c - pc) ** 2 + (r - pr) ** 2 <= prad ** 2
+                    and names[cg[r][c]] in allowed_set):
+                dialect_grid[r][c] = di
 
 # Towns/cities of GREAT BRITAIN (England, Scotland, Wales only — no Northern Ireland,
 # since the question asks about growing up in GB), each with its county / council area.
@@ -826,77 +888,32 @@ const dialectGrid=%s,dialectColors=%s;
 const TOWNS=%s;   // GB towns/cities for the hometown type-ahead
 const ICELOLLY_IMG=%s;
 const BREAD_IMG=%s;
+// NOTE: ordered newest-added -> oldest-added (not the usual thematic order) so
+// new features land at the front of the quiz for quick manual testing. hometown
+// stays first regardless (it's an intake field, not a dialect question).
 const QUESTIONS=[
   // first question: where did you grow up? (a GB town type-ahead, or "not from GB").
   // Not a heat-map question — collected (with consent) for future training, not scored.
   {id:"hometown",text:"Where in Great Britain did you grow up?",hometownq:true},
-  // metric "pct": a clean binary the paper reports as proportions -> show a percent.
-  // ipa:true enables the click-a-city foot-strut IPA readout (foot-strut only).
-  {id:"q1",text:"Do <i>foot</i> and <i>cut</i> rhyme for you?",tag:"real data",real:true,metric:"pct",
-   ipa:true,info:"footstrut",infoLabel:"the foot&ndash;strut split",
-   opts:[{label:"Yes, they rhyme",v:1,word:"rhyme"},{label:"No, they sound different",v:0,word:"split"}]},
-  {id:"bookspook",text:"Do <i>book</i> and <i>spook</i> rhyme for you?",tag:"real data",real:true,metric:"pct",
-   info:"bookspook",infoLabel:"book vs spook",
-   opts:[{label:"Yes, they rhyme",v:1,word:"rhyme book/spook"},{label:"No, they sound different",v:0,word:"don&rsquo;t rhyme"}]},
-  {id:"stirstare",text:"Do <i>stir</i> and <i>stare</i> rhyme for you?",tag:"real data",real:true,metric:"pct",
-   info:"nursesquare",infoLabel:"the nurse&ndash;square merger",
-   opts:[{label:"Yes, they rhyme",v:1,word:"rhyme stir/stare"},{label:"No, they sound different",v:0,word:"keep them distinct"}]},
-  {id:"northforce",text:"Do <i>horse</i> and <i>hoarse</i> rhyme for you?",tag:"real data",real:true,metric:"pct",
-   info:"northforce",infoLabel:"the north&ndash;force merger",
-   opts:[{label:"Yes, they rhyme",v:1,word:"rhyme (merged)"},{label:"No, they sound different",v:0,word:"keep them distinct"}]},
-  {id:"forcecure",text:"Do <i>poor</i> and <i>pour</i> rhyme for you?",tag:"real data",real:true,metric:"pct",
-   info:"forcecure",infoLabel:"the cure&ndash;force merger",
-   opts:[{label:"Yes, they rhyme",v:1,word:"rhyme (merged)"},{label:"No, they sound different",v:0,word:"keep them distinct"}]},
-  {id:"trapbath",text:"Do <i>gas</i> and <i>grass</i> rhyme for you?",tag:"blended: BBC Future + English Dialect App",real:true,metric:"pct",
-   info:"trapbath",infoLabel:"the trap&ndash;bath split",
-   opts:[{label:"Yes, they rhyme",v:1,word:"rhyme (short a)"},
-         {label:"No, they sound different",v:0,word:"split (long a)"}]},
-  {id:"scone",text:"Does <i>scone</i> rhyme with <i>gone</i> or <i>bone</i>?",tag:"real data",real:true,metric:"pct",
-   info:"scone",infoLabel:"how you say &lsquo;scone&rsquo;",
-   opts:[{label:"Gone (&ldquo;skon&rdquo;)",v:1,word:"rhyme it with gone"},
-         {label:"Bone / cone (&ldquo;skohn&rdquo;)",v:0,word:"rhyme it with bone"}]},
-  // binary + the paper gives real proportions -> metric "pct"
-  {id:"tvd",text:"What do you call your evening meal?",tag:"real data",real:true,metric:"pct",
-   info:"tvd",infoLabel:"tea vs dinner",
-   opts:[{label:"Tea",v:1,word:"say tea"},{label:"Dinner",v:0,word:"say dinner"}]},
-  {id:"giveitme",text:"How natural does &ldquo;<i>Give it me</i>&rdquo; sound to you (for <i>give it to me</i>)?",tag:"real data",real:true,metric:"pct",
-   slider:true,grid:"giveitme",sliderLabels:["Sounds wrong","Sounds fine"],info:"giveitme",infoLabel:"the &lsquo;give it me&rsquo; dative"},
-  {id:"splinter",text:"What do you call a small piece of wood stuck in your skin?",tag:"",real:true,multi:true,metric:"prevalence",
-   info:"splinter",infoLabel:"words for a splinter",
+  {id:"skiveclass",text:"What do you call skipping school without permission?",
+   tag:"real data (BBC Voices, via Grieve et al. 2019)",real:true,phon:false,multi:true,metric:"prevalence",
+   info:"skiveclass",infoLabel:"words for skipping school",
    opts:[
-     {label:"Splinter",v:"splinter",term:"splinter",grid:"splinter"},
-     {label:"Spelk",v:"spelk",term:"spelk",grid:"spelk"},
-     {label:"Spell",v:"spell",term:"spell",grid:"spell"},
-     {label:"Shiver",v:"shiver",term:"shiver",grid:"shiver"},
-     {label:"Sliver",v:"sliver",term:"sliver",grid:"sliver"},
-     {label:"I don&rsquo;t have a word for this",v:"none",term:"no word for this",grid:"none_splinter",excl:true,none:true}
+     {label:"Skive (off)",v:"skive",term:"skive",grid:"skiveclass_skive"},
+     {label:"Bunk off",v:"bunk",term:"bunk off",grid:"skiveclass_bunk"},
+     {label:"Wag (it)",v:"wag",term:"wag",grid:"skiveclass_wag"},
+     {label:"Skip (it)",v:"skip",term:"skip",grid:"skiveclass_skip"},
+     {label:"Play hookey",v:"hookey",term:"hookey",grid:"skiveclass_hookey"},
+     {label:"I don&rsquo;t have a word for this",v:"none",term:"no word for this",grid:"none_skiveclass",excl:true,none:true}
    ]},
-  // metric "prevalence": lexical variants overlap in a speaker's lexicon and the
-  // surface is a relative Gi* hotspot, not a headcount -> show a qualitative band,
-  // NOT a fake percentage.
-  {id:"bread",text:"This is called a &#95;&#95;&#95;&#95;",img:BREAD_IMG,tag:"real data (bread-roll survey)",real:true,phon:false,multi:true,metric:"prevalence",
-   opts:[
-     {label:"Barm / barm cake",v:"barm",term:"barm",grid:"barm"},
-     {label:"Tea cake",v:"teacake",term:"tea cake",grid:"teacake"},
-     {label:"Muffin",v:"muffin",term:"muffin",grid:"muffin"},
-     {label:"Cob",v:"cob",term:"cob",grid:"cob"},
-     {label:"Batch",v:"batch",term:"batch",grid:"batch"},
-     {label:"Bap",v:"bap",term:"bap",grid:"bap"},
-     {label:"Bun",v:"bun",term:"bun",grid:"bun"},
-     {label:"Roll",v:"roll",term:"roll",grid:"roll"},
-     {label:"I don&rsquo;t have a word for this",v:"none",term:"no word for this",grid:"none_bread",excl:true,none:true}
-   ]},
-  // single-select lexical with a photo. "ice lolly" is standard; "lolly ice" is the
-  // Merseyside reversal. "other"/"no word" don't map to a region (inconclusive).
-  {id:"lolly",text:"What would you call this frozen treat?",
-   img:ICELOLLY_IMG,tag:"",real:true,metric:"prevalence",info:"lolly",infoLabel:"ice lolly vs lolly ice",
-   opts:[
-     {label:"Ice lolly",v:"icelolly",term:"ice lolly",grid:"icelolly"},
-     {label:"Lolly ice",v:"lollyice",term:"lolly ice",grid:"lollyice"},
-     {label:"I use both interchangeably",v:"both",term:"both",grid:"lollyice"},
-     {label:"Other term (ice pop, popsicle, etc.)",v:"other",term:"another term",none:true},
-     {label:"I have no word for this",v:"none",term:"no word for this",none:true}
-   ]},
+  {id:"thfronting",text:"Would you ever pronounce &ldquo;th&rdquo; as an &ldquo;f&rdquo; or &ldquo;v&rdquo; (so <i>think</i> sounds like <i>fink</i>, <i>brother</i> like <i>bruvver</i>)?",
+   tag:"real data",real:true,metric:"pct",grid:"thfronting",
+   info:"thfronting",infoLabel:"th-fronting",
+   opts:[{label:"Yes",v:1,word:"front their &lsquo;th&rsquo;s"},{label:"No",v:0,word:"keep &lsquo;th&rsquo;"}]},
+  {id:"youse",text:"Would you ever call a group of two or more people &ldquo;<i>yous</i>&rdquo; or &ldquo;<i>youse</i>&rdquo;?",
+   tag:"real data",real:true,metric:"pct",grid:"youse",
+   info:"youse",infoLabel:"plural &lsquo;yous(e)&rsquo;",
+   opts:[{label:"Yes",v:1,word:"say yous(e)"},{label:"No",v:0,word:"don&rsquo;t say yous(e)"}]},
   {id:"tag",text:"This children&rsquo;s chasing game is called &#95;&#95;&#95;&#95;",tag:"real data (Starkey Comics dialect survey)",real:true,phon:false,multi:true,metric:"prevalence",
    info:"tag",infoLabel:"names for the chasing game",
    opts:[
@@ -912,7 +929,75 @@ const QUESTIONS=[
      {label:"Touch",v:"touch",term:"touch",grid:"tag_touch"},
      {label:"Dobby",v:"dobby",term:"dobby",grid:"tag_dobby"},
      {label:"I don&rsquo;t have a word for this",v:"none",term:"no word for this",grid:"none_tag",excl:true,none:true}
-   ]}
+   ]},
+  {id:"scone",text:"Does <i>scone</i> rhyme with <i>gone</i> or <i>bone</i>?",tag:"real data",real:true,metric:"pct",
+   info:"scone",infoLabel:"how you say &lsquo;scone&rsquo;",
+   opts:[{label:"Gone (&ldquo;skon&rdquo;)",v:1,word:"rhyme it with gone"},
+         {label:"Bone / cone (&ldquo;skohn&rdquo;)",v:0,word:"rhyme it with bone"}]},
+  {id:"forcecure",text:"Do <i>poor</i> and <i>pour</i> rhyme for you?",tag:"real data",real:true,metric:"pct",
+   info:"forcecure",infoLabel:"the cure&ndash;force merger",
+   opts:[{label:"Yes, they rhyme",v:1,word:"rhyme (merged)"},{label:"No, they sound different",v:0,word:"keep them distinct"}]},
+  {id:"northforce",text:"Do <i>horse</i> and <i>hoarse</i> rhyme for you?",tag:"real data",real:true,metric:"pct",
+   info:"northforce",infoLabel:"the north&ndash;force merger",
+   opts:[{label:"Yes, they rhyme",v:1,word:"rhyme (merged)"},{label:"No, they sound different",v:0,word:"keep them distinct"}]},
+  {id:"stirstare",text:"Do <i>stir</i> and <i>stare</i> rhyme for you?",tag:"real data",real:true,metric:"pct",
+   info:"nursesquare",infoLabel:"the nurse&ndash;square merger",
+   opts:[{label:"Yes, they rhyme",v:1,word:"rhyme stir/stare"},{label:"No, they sound different",v:0,word:"keep them distinct"}]},
+  // single-select lexical with a photo. "ice lolly" is standard; "lolly ice" is the
+  // Merseyside reversal. "other"/"no word" don't map to a region (inconclusive).
+  {id:"lolly",text:"What would you call this frozen treat?",
+   img:ICELOLLY_IMG,tag:"",real:true,metric:"prevalence",info:"lolly",infoLabel:"ice lolly vs lolly ice",
+   opts:[
+     {label:"Ice lolly",v:"icelolly",term:"ice lolly",grid:"icelolly"},
+     {label:"Lolly ice",v:"lollyice",term:"lolly ice",grid:"lollyice"},
+     {label:"I use both interchangeably",v:"both",term:"both",grid:"lollyice"},
+     {label:"Other term (ice pop, popsicle, etc.)",v:"other",term:"another term",none:true},
+     {label:"I have no word for this",v:"none",term:"no word for this",none:true}
+   ]},
+  {id:"giveitme",text:"How natural does &ldquo;<i>Give it me</i>&rdquo; sound to you (for <i>give it to me</i>)?",tag:"real data",real:true,metric:"pct",
+   slider:true,grid:"giveitme",sliderLabels:["Sounds wrong","Sounds fine"],info:"giveitme",infoLabel:"the &lsquo;give it me&rsquo; dative"},
+  // metric "prevalence": lexical variants overlap in a speaker's lexicon and the
+  // surface is a relative Gi* hotspot, not a headcount -> show a qualitative band,
+  // NOT a fake percentage.
+  {id:"bread",text:"This is called a &#95;&#95;&#95;&#95;",img:BREAD_IMG,tag:"real data (bread-roll survey)",real:true,phon:false,multi:true,metric:"prevalence",
+   opts:[
+     {label:"Barm / barm cake",v:"barm",term:"barm",grid:"barm"},
+     {label:"Tea cake",v:"teacake",term:"tea cake",grid:"teacake"},
+     {label:"Muffin",v:"muffin",term:"muffin",grid:"muffin"},
+     {label:"Cob",v:"cob",term:"cob",grid:"cob"},
+     {label:"Batch",v:"batch",term:"batch",grid:"batch"},
+     {label:"Bap",v:"bap",term:"bap",grid:"bap"},
+     {label:"Bun",v:"bun",term:"bun",grid:"bun"},
+     {label:"Roll",v:"roll",term:"roll",grid:"roll"},
+     {label:"Softie",v:"softie",term:"softie",grid:"softie"},
+     {label:"I don&rsquo;t have a word for this",v:"none",term:"no word for this",grid:"none_bread",excl:true,none:true}
+   ]},
+  {id:"splinter",text:"What do you call a small piece of wood stuck in your skin?",tag:"",real:true,multi:true,metric:"prevalence",
+   info:"splinter",infoLabel:"words for a splinter",
+   opts:[
+     {label:"Splinter",v:"splinter",term:"splinter",grid:"splinter"},
+     {label:"Spelk",v:"spelk",term:"spelk",grid:"spelk"},
+     {label:"Spell",v:"spell",term:"spell",grid:"spell"},
+     {label:"Shiver",v:"shiver",term:"shiver",grid:"shiver"},
+     {label:"Sliver",v:"sliver",term:"sliver",grid:"sliver"},
+     {label:"I don&rsquo;t have a word for this",v:"none",term:"no word for this",grid:"none_splinter",excl:true,none:true}
+   ]},
+  // binary + the paper gives real proportions -> metric "pct"
+  {id:"tvd",text:"What do you call your evening meal?",tag:"real data",real:true,metric:"pct",
+   info:"tvd",infoLabel:"tea vs dinner",
+   opts:[{label:"Tea",v:1,word:"say tea"},{label:"Dinner",v:0,word:"say dinner"}]},
+  {id:"trapbath",text:"Do <i>gas</i> and <i>grass</i> rhyme for you?",tag:"blended: BBC Future + English Dialect App",real:true,metric:"pct",
+   info:"trapbath",infoLabel:"the trap&ndash;bath split",
+   opts:[{label:"Yes, they rhyme",v:1,word:"rhyme (short a)"},
+         {label:"No, they sound different",v:0,word:"split (long a)"}]},
+  {id:"bookspook",text:"Do <i>book</i> and <i>spook</i> rhyme for you?",tag:"real data",real:true,metric:"pct",
+   info:"bookspook",infoLabel:"book vs spook",
+   opts:[{label:"Yes, they rhyme",v:1,word:"rhyme book/spook"},{label:"No, they sound different",v:0,word:"don&rsquo;t rhyme"}]},
+  // metric "pct": a clean binary the paper reports as proportions -> show a percent.
+  // ipa:true enables the click-a-city foot-strut IPA readout (foot-strut only).
+  {id:"q1",text:"Do <i>foot</i> and <i>cut</i> rhyme for you?",tag:"real data",real:true,metric:"pct",
+   ipa:true,info:"footstrut",infoLabel:"the foot&ndash;strut split",
+   opts:[{label:"Yes, they rhyme",v:1,word:"rhyme"},{label:"No, they sound different",v:0,word:"split"}]}
 ];
 // foot-strut rate is still only an estimate -> don't fake precision at the extremes
 function fmtPct(p){if(p>=88)return "90%%+";if(p<=12)return "under 10%%";return "~"+(Math.round(p/5)*5)+"%%";}
@@ -926,6 +1011,7 @@ const ETYM={
   bap:"<b>bap</b> &mdash; originally Scottish English (16th c.), of unknown origin.",
   bun:"<b>bun</b> &mdash; from Middle English <i>bunne</i>, from Anglo-Norman <i>bugne</i> \\"bump, fritter\\" (Old French), ultimately \\"little lump\\".",
   roll:"<b>roll</b> &mdash; named for its rolled, rounded shape; via Old French <i>rol(l)er</i> from Latin <i>rotulus</i> \\"little wheel\\".",
+  softie:"<b>softie</b> &mdash; a North East Scotland (Doric) word, from the same root as <i>soft</i>: a plain, soft-crusted white roll, as opposed to a crustier <i>bap</i>. Strongest on the Aberdeenshire coast.",
   footstrut:"<b>The FOOT&ndash;STRUT split</b> &mdash; in the 17th century the Middle English short <i>u</i> /&#650;/ split, in southern England, into two vowels: /&#650;/ (FOOT) and a new unrounded /&#652;/ (STRUT). The split never reached most of the North &amp; Midlands, where <i>foot</i> and <i>strut</i> still share /&#650;/ and rhyme.",
   tvd:"<b>tea vs dinner</b> &mdash; the name for the evening meal. <i>Tea</i> is the northern (and traditionally working-class) term; <i>dinner</i> the southern one, and historically the &lsquo;U&rsquo;/upper-class usage (Ross, 1954). So it carries a class edge as well as a regional one.",
   bookspook:"<b>book vs spook</b> &mdash; in some accents the <i>-ook</i> words (book, cook, look) keep the old long vowel /u&#720;/, so <i>book</i> is [bu&#720;k] and rhymes with <i>spook</i> &mdash; putting it in the GOOSE set rather than FOOT. Traditional in the North East and Stoke (and once Liverpool); Scotland has no foot&ndash;goose distinction at all.",
@@ -933,6 +1019,9 @@ const ETYM={
   scone:"<b>scone</b> &mdash; the great teatime shibboleth: does it rhyme with <i>gone</i> (/sk&#594;n/) or with <i>bone</i>/<i>cone</i> (/sko&#650;n/)? Most of Britain &mdash; Scotland and the North especially &mdash; rhymes it with <i>gone</i>. The <i>bone</i> pronunciation is the local norm in the <b>East Midlands</b> (Nottingham, Derby, Leicester), with the far South West leaning that way a little too.",
   northforce:"<b>The NORTH&ndash;FORCE merger</b> &mdash; whether <i>horse</i> and <i>hoarse</i> (or <i>for</i> and <i>four</i>, <i>war</i> and <i>wore</i>) sound identical. Most of England and Wales merged them long ago, so they rhyme; <b>Scotland</b> keeps them clearly distinct, as do pockets around <b>Manchester</b> and Merseyside.",
   forcecure:"<b>The CURE&ndash;FORCE merger</b> &mdash; whether <i>poor</i> and <i>pour</i> (or <i>sure</i> and <i>shore</i>, <i>tour</i> and <i>tore</i>) sound identical. Across most of England they have merged, so they rhyme; the older distinct <i>poor</i>/<i>sure</i> vowel /&#650;&#601;/ survives in <b>Scotland</b>, the <b>North East</b>, and <b>West Yorkshire</b>.",
+  youse:"<b>Plural &lsquo;yous(e)&rsquo;</b> &mdash; a second-person plural pronoun, filling the gap English left when <i>thou/you</i> collapsed to just <i>you</i>. Strongest in <b>Scotland</b> and the <b>North East</b> (Newcastle, Sunderland, Middlesbrough), fading through the Midlands, and rare in southern England, where <i>you guys</i> or plain <i>you</i> is used instead.",
+  thfronting:"<b>TH-fronting</b> &mdash; replacing the &lsquo;th&rsquo; sounds /&#952;/ and /&#240;/ with /f/ and /v/, so <i>think</i> &rarr; <i>fink</i> and <i>brother</i> &rarr; <i>bruvver</i>. Once a London (Cockney) feature, it has spread rapidly since the late 20th century and is now common across much of urban England, especially among younger speakers &mdash; while remaining rare in Scotland, Wales, and rural areas generally.",
+  skiveclass:"<b>Words for skipping school</b> without permission, from the BBC Voices survey. <b>Skive</b> is the general British term, strongest in Scotland and the South West; <b>bunk off</b> is a London/South East form; <b>wag</b> belongs to the North West and North East; <b>play hookey</b> is a chiefly North Eastern (Tyneside) usage; <b>skip</b> is used more loosely nationwide, without a single clear home region.",
   trapbath:"<b>The trap&ndash;bath split</b> &mdash; in the 18th century southern English lengthened the <i>a</i> in a set of words (<i>bath, grass, last, dance</i>) to /&#593;&#720;/, splitting them from TRAP words (<i>cat, trap</i>). The North, Wales and Scotland kept the short /a/ &mdash; so a northerner says [ba&#952;], a southerner [b&#593;&#720;&#952;]. It&rsquo;s one of the sharpest north&ndash;south markers.",
   splinter:"<b>Words for a splinter</b> of wood in the skin. <b>Splinter</b> is the standard nationwide; <b>spelk</b> (from Old Norse / Old English <i>spelc</i>) belongs to the North East &amp; the Borders; <b>spell</b> is northern; <b>shiver</b> is East Anglian; <b>sliver</b> is a South East word.",
   giveitme:"<b>&lsquo;Give it me&rsquo;</b> &mdash; the &lsquo;alternative double-object&rsquo; dative: the theme (<i>it</i>) comes before the goal (<i>me</i>) with no <i>to</i> &mdash; <i>give it me</i> rather than <i>give it to me</i> or <i>give me it</i>. It&rsquo;s a North West &amp; Midlands feature (strongest around Manchester and the Potteries), thinning towards the North East and the South.",
@@ -1423,20 +1512,29 @@ cv.addEventListener("click",(e)=>{
       "<br><span class='ipa'>/f&#650;t/ &middot; /"+cut+"/</span>";}
 });
 
-// ---- landing page: chunky 8-bit pixel map, same style as the quiz maps ----
+// ---- landing page hero map: smooth (not the quiz's chunky pixel style) ----
 function drawMini(){
-  const M=5, GAP2=1;   // same chunky pixel cells + subtle grid as the quiz heat maps
-  const mc=document.getElementById("introcv"); mc.width=W*M; mc.height=H_*M;
-  mc.style.width="300px";   // height is auto (CSS) -> scales proportionally, stays responsive
-  const mx=mc.getContext("2d");
-  mx.clearRect(0,0,mc.width,mc.height);
+  // Draw at a large supersampled resolution (one flat-coloured square per
+  // grid cell, no gaps) then let the browser's own bilinear image scaling
+  // shrink that down to the on-page size. Shrinking a high-res hard-edged
+  // image is what real anti-aliasing looks like -- crisp region colours,
+  // smoothly stepped edges -- as opposed to a Gaussian blur, which softens
+  // the whole picture into a fog. That's the "8-bit"/blurry look to avoid.
+  const SS=10;
+  const off=document.createElement("canvas"); off.width=W*SS; off.height=H_*SS;
+  const ox=off.getContext("2d");
   for(let r=0;r<H_;r++)for(let c=0;c<W;c++){
     const di=dialectGrid[r][c]; if(di<0) continue;
-    mx.fillStyle="#c9c9d2"; mx.fillRect(c*M,r*M,M,M);            // grey pixel grid, like the quiz
     const col=dialectColors[di][1];
-    mx.fillStyle="rgb("+col[0]+","+col[1]+","+col[2]+")";
-    mx.fillRect(c*M,r*M,M-GAP2,M-GAP2);
+    ox.fillStyle="rgb("+col[0]+","+col[1]+","+col[2]+")";
+    ox.fillRect(c*SS,r*SS,SS,SS);
   }
+  const mc=document.getElementById("introcv"); mc.width=W*2; mc.height=H_*2;
+  mc.style.width="300px";
+  const mx=mc.getContext("2d");
+  mx.imageSmoothingEnabled=true; mx.imageSmoothingQuality="high";
+  mx.clearRect(0,0,mc.width,mc.height);
+  mx.drawImage(off,0,0,mc.width,mc.height);
   // hover/touch -> name the dialect group under the cursor (replaces the old static key)
   const tip=document.getElementById("introtip"), cap=document.getElementById("introcap");
   function miniTip(clientX,clientY){const rect=mc.getBoundingClientRect();
