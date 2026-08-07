@@ -326,6 +326,9 @@ grids_all = {"q1": grid_json(q1), "tvd": grid_json(decoded_surface("tvd", 0.05, 
              "forcecure": grid_json(decoded_surface("forcecure", 0.10, 0.85)),
              "youse": grid_json(decoded_surface("youse", 0.20, 0.92)),
              "thfronting": grid_json(decoded_surface("thfronting", 0.04, 0.94)),
+             # calibrated against the paper's own reported regional rates (NW 70%,
+             # W Mids 61%, NE 26%, East 31%, Kent 26%) -> a true P(rhyme), no rescale
+             "singerfinger": grid_json(decoded_pct_surface("singerfinger")),
              "skiveclass_bunk": grid_json(decoded_pct_surface("skiveclass_bunk")),
              "skiveclass_hookey": grid_json(decoded_pct_surface("skiveclass_hookey")),
              "skiveclass_skip": grid_json(decoded_pct_surface("skiveclass_skip")),
@@ -452,10 +455,8 @@ DIALECT = [
     ("East Midlands", ["Derbyshire", "Leicestershire", "Nottinghamshire", "Rutland", "Lincolnshire"],
      (232, 112, 40)),
     ("South-East Midlands", ["Northamptonshire", "Bedfordshire", "Buckinghamshire"], (233, 126, 63)),
-    ("Cambridgeshire", ["Cambridgeshire", "Huntingdonshire"], (180, 169, 0)),
-    ("Norfolk", ["Norfolk"], (253, 237, 104)),
-    ("Suffolk", ["Suffolk"], (225, 210, 120)),
-    ("Essex", ["Essex"], (235, 225, 180)),
+    ("East Anglia", ["Cambridgeshire", "Huntingdonshire", "Norfolk", "Suffolk", "Essex"],
+     (240, 219, 92)),
     ("South East", ["Surrey", "Hampshire", "Berkshire", "Oxfordshire", "Hertfordshire"], (56, 0, 0)),
     ("Sussex", ["Sussex"], (96, 1, 0)),
     ("Kentish", ["Kent"], (115, 1, 1)),
@@ -483,7 +484,7 @@ PATCHES = [
     ("Glaswegian", 39.8, 54.6, 7, (35, 36, 176), ["Lanarkshire", "Renfrewshire", "Dunbartonshire"]),
     ("Geordie", 62.6, 67.9, 7, (126, 68, 119), ["Northumberland"]),
     ("Mackem", 63, 69, 5, (193, 68, 193), ["Durham"]),
-    ("Tesside", 64, 74, 5, (227, 78, 226), ["Durham", "Yorkshire"]),
+    ("Teesside", 64, 74, 5, (227, 78, 226), ["Durham", "Yorkshire"]),   # source legend misspells this "Tesside"
     ("Scouse", 50.7, 91.3, 8, (226, 172, 225), ["Lancashire", "Cheshire"]),
     ("Mancunian", 57.2, 90.2, 8, (227, 200, 226), ["Lancashire", "Cheshire"]),
     ("Brummie", 60.2, 105.0, 8, (160, 85, 37), ["Warwickshire", "Worcestershire", "Staffordshire"]),
@@ -673,10 +674,11 @@ GB_TOWNS = sorted(set([
 
 html = """<!DOCTYPE html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><style>
-  :root{--bg:#f7f5f0;--ink:#2b2b2b;--muted:#8a857c;--accent:#c0141f;--card:#fff;--line:#e6e1d8;}
+  :root{--bg:#f6f1e7;--ink:#2b2b2b;--inkstrong:#000;--body:#555;--muted:#8a857c;--accent:#c0141f;--accent-h:#a5101a;--card:#fff;--line:#e6e1d8;--line2:#cfc7b8;--track:#e4ddcf;--sel:#fdf0f0;--soft:#ece5d8;--disabled:#dcbcbe;--box:#c9c3b8;--teal:#0a7a63;--faint:#b3ada2;--bgimg:radial-gradient(circle at 6%% 8%%, rgba(38,84,168,.085), rgba(38,84,168,0) 38%%),radial-gradient(circle at 95%% 92%%, rgba(192,20,31,.075), rgba(192,20,31,0) 40%%),url("data:image/svg+xml,%%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%%3E%%3Cfilter id='n'%%3E%%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%%3E%%3C/filter%%3E%%3Crect width='160' height='160' filter='url(%%23n)' opacity='0.32'/%%3E%%3C/svg%%3E")}
   *{box-sizing:border-box;}
   html,body{margin:0;min-height:100%%;}
-  body{background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,sans-serif;}
+  body{background-color:var(--bg);background-image:var(--bgimg);background-attachment:fixed;
+       color:var(--ink);transition:background-color .25s ease,color .25s ease;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,sans-serif;}
   #app{max-width:1060px;margin:0 auto;padding:20px 20px 16px;position:relative;}
   #qimg{display:block;width:230px;height:230px;object-fit:cover;border-radius:16px;margin:48px auto 0;box-shadow:0 6px 18px rgba(0,0,0,.16);}
   .sliderbox{margin:20px 0 8px;}
@@ -686,58 +688,58 @@ html = """<!DOCTYPE html>
   #restart{position:absolute;top:8px;right:16px;display:inline-flex;align-items:center;gap:7px;
        font-size:13.5px;font-weight:650;color:#fff;background:var(--accent);
        border:none;border-radius:10px;padding:10px 18px;cursor:pointer;z-index:20;box-shadow:0 3px 10px rgba(192,20,31,.22);}
-  #restart:hover{background:#a5101a;}
+  #restart:hover{background:var(--accent-h);}
   #restart .ricon{font-size:30px;line-height:1;display:flex;align-items:center;}
   header{text-align:center;margin-bottom:6px;}
   .site-title{font-size:27px;font-weight:750;letter-spacing:-.015em;margin:0 0 3px;}
   .site-sub{font-size:13px;color:var(--muted);margin:0 0 18px;}
-  .progress-wrap{max-width:420px;margin:0 auto 7px;height:6px;background:#e9e4da;border-radius:99px;overflow:hidden;}
+  .progress-wrap{max-width:420px;margin:0 auto 7px;height:6px;background:var(--track);border-radius:99px;overflow:hidden;}
   .progress-bar{height:100%%;width:0;background:var(--accent);border-radius:99px;transition:width .3s ease;}
   #progress{font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);text-align:center;margin-bottom:14px;}
   #stage{display:flex;gap:30px;align-items:flex-start;justify-content:center;flex-wrap:wrap;}
   #left{flex:0 0 340px;max-width:340px;}
   #qtext{font-size:24px;line-height:1.3;margin:0 0 7px;font-weight:650;}
   #qtag{font-size:12px;color:var(--muted);margin-bottom:20px;}
-  #qtag.real{color:#0a7a63;} #qtag::before{content:"\\25CF  ";font-size:9px;vertical-align:middle;}
+  #qtag.real{color:var(--teal);} #qtag::before{content:"\\25CF  ";font-size:9px;vertical-align:middle;}
   .opt{display:flex;align-items:center;gap:11px;width:100%%;margin:6px 0;padding:11px 15px;font-size:15px;text-align:left;
        background:var(--card);border:1.5px solid var(--line);border-radius:12px;cursor:pointer;transition:all .12s;color:var(--ink);}
   .opt:not(:disabled):hover{border-color:var(--accent);transform:translateY(-1px);box-shadow:0 4px 14px rgba(0,0,0,.07);}
-  .opt.sel{border-color:var(--accent);background:#fdf0f0;}
+  .opt.sel{border-color:var(--accent);background:var(--sel);}
   .opt:disabled{cursor:default;opacity:.45;} .opt.sel:disabled{opacity:1;}
-  .opt .box{flex:0 0 18px;height:18px;border:1.5px solid #c9c3b8;border-radius:5px;display:inline-flex;
+  .opt .box{flex:0 0 18px;height:18px;border:1.5px solid var(--box);border-radius:5px;display:inline-flex;
             align-items:center;justify-content:center;font-size:12px;line-height:1;color:#fff;}
   .opt.sel .box{background:var(--accent);border-color:var(--accent);}
   .hint{font-size:12px;color:var(--muted);margin:0 0 8px;min-height:16px;}
   #next{margin-top:12px;width:100%%;padding:13px;font-size:15px;font-weight:600;color:#fff;background:var(--accent);
         border:none;border-radius:12px;cursor:pointer;transition:background .12s;}
-  #next:hover:not(:disabled){background:#a5101a;} #next:disabled{background:#dcbcbe;cursor:not-allowed;}
-  #leftdone{font-size:16px;color:#555;line-height:1.55;} #leftdone b{color:var(--ink);}
+  #next:hover:not(:disabled){background:var(--accent-h);} #next:disabled{background:var(--disabled);cursor:not-allowed;}
+  #leftdone{font-size:16px;color:var(--body);line-height:1.55;} #leftdone b{color:var(--ink);}
   .navbtns{margin-top:14px;display:flex;gap:12px;align-items:center;}
   #back{font-size:14px;font-weight:600;color:var(--ink);background:var(--card);border:1.5px solid var(--line);
         border-radius:10px;padding:11px 18px;cursor:pointer;transition:all .12s;}
-  #back:hover{border-color:#bdb7ab;background:#f2ede4;}
+  #back:hover{border-color:var(--line2);background:var(--soft);}
   #startover{font-size:14px;color:#fff;background:var(--ink);border:none;border-radius:9px;padding:9px 16px;cursor:pointer;}
-  #startover:hover{background:#000;}
+  #startover:hover{background:var(--inkstrong);}
   #right{flex:0 0 auto;text-align:center;max-width:360px;}
   #rtitle{font-size:14px;line-height:1.4;margin-bottom:6px;min-height:2em;color:var(--muted);}
   #rtitle b{color:var(--ink);}
   #out{position:relative;display:inline-block;}
   canvas{display:block;cursor:pointer;max-height:52vh;max-width:86vw;width:auto;height:auto;border-radius:6px;}
-  #rprompt{color:#bbb;font-size:14px;padding:60px 44px;border:2px dashed #e2ddd3;border-radius:14px;}
+  #rprompt{color:var(--faint);font-size:14px;padding:60px 44px;border:2px dashed var(--line);border-radius:14px;}
   #match{font-size:16px;margin-top:8px;min-height:1.3em;font-weight:600;} #match b{color:var(--accent);}
   #legend{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);justify-content:center;margin-top:6px;}
   #legend .bar{width:150px;height:12px;border-radius:3px;
-       background:linear-gradient(to right,rgb(18,86,222),rgb(232,232,236),rgb(214,16,32));border:1px solid #ccc;}
+       background:linear-gradient(to right,rgb(18,86,222),rgb(232,232,236),rgb(214,16,32));border:1px solid var(--line);}
   #infowrap{position:relative;display:inline-block;margin-top:6px;}
-  #infobtn{font-size:13px;color:#0a7a63;cursor:help;} #infobtn:hover{text-decoration:underline;}
+  #infobtn{font-size:13px;color:var(--teal);cursor:help;} #infobtn:hover{text-decoration:underline;}
   #info{display:none;position:absolute;bottom:150%%;left:50%%;transform:translateX(-50%%);width:340px;max-width:82vw;
-        font-size:12.5px;line-height:1.5;color:#333;text-align:left;background:var(--card);border:1px solid var(--line);
+        font-size:12.5px;line-height:1.5;color:var(--body);text-align:left;background:var(--card);border:1px solid var(--line);
         border-radius:10px;padding:11px 13px;box-shadow:0 8px 24px rgba(0,0,0,.16);z-index:40;}
   #info::before{content:"";position:absolute;top:100%%;left:50%%;transform:translateX(-50%%);
         border:7px solid transparent;border-top-color:var(--card);}
   #infowrap:hover #info,#infowrap.open #info{display:block;}
-  #info .src{color:#aaa;font-size:11px;margin-top:8px;} #info .isep{border:none;border-top:1px solid #eee;margin:9px 0;}
-  #detail{font-size:13px;color:#444;margin-top:6px;min-height:1.2em;} #detail .ipa{font-size:18px;color:#111;margin:0 6px;letter-spacing:.5px;}
+  #info .src{color:var(--faint);font-size:11px;margin-top:8px;} #info .isep{border:none;border-top:1px solid var(--line);margin:9px 0;}
+  #detail{font-size:13px;color:#444;margin-top:6px;min-height:1.2em;} #detail .ipa{font-size:18px;color:var(--ink);margin:0 6px;letter-spacing:.5px;}
   .tip{position:absolute;background:var(--ink);color:#fff;padding:6px 10px;border-radius:6px;font-size:12px;
        line-height:1.35;white-space:nowrap;pointer-events:none;opacity:0;transform:translate(-50%%,-118%%);
        transition:opacity .1s;} .tip b{font-weight:600;} .tip small{opacity:.82;}
@@ -749,18 +751,30 @@ html = """<!DOCTYPE html>
   .intro-left{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;text-align:center;}
   .intro-right{flex:0 1 400px;max-width:400px;display:flex;flex-direction:column;justify-content:center;text-align:left;}
   .intro-title{font-size:clamp(36px,5.4vw,62px);font-weight:800;letter-spacing:-.025em;margin:0 0 8px;line-height:1.02;}
-  .intro-sub{font-size:14px;color:var(--muted);margin:0;}
+  .intro-sub{font-size:15px;color:var(--muted);margin:0;}
+  /* soft radial pool under the map so it sits on the page instead of floating */
   #introcvwrap{position:relative;display:inline-block;}
-  #introcv{display:block;margin:0 auto 10px;image-rendering:auto;cursor:crosshair;max-width:100%%;height:auto;}
+  #introcvwrap::before{content:"";position:absolute;inset:-6%% -10%%;pointer-events:none;z-index:0;
+       background:radial-gradient(ellipse at 50%% 52%%, rgba(64,54,44,.075), rgba(64,54,44,0) 68%%);}
+  #introcv{position:relative;z-index:1;display:block;margin:0 auto;width:320px;image-rendering:auto;
+       cursor:crosshair;max-width:100%%;height:auto;}
   #introtip{position:absolute;pointer-events:none;opacity:0;transform:translate(-50%%,-135%%);white-space:nowrap;
-       font-size:12px;font-weight:650;color:#fff;padding:4px 9px;border-radius:6px;transition:opacity .08s;z-index:5;}
-  .intro-cap{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:0;min-height:1.2em;}
+       font-size:12px;font-weight:650;color:#fff;padding:4px 9px;border-radius:6px;transition:opacity .08s;z-index:5;
+       box-shadow:0 3px 10px rgba(0,0,0,.18);}
+  /* the tour/hover read-out: a pill that takes on the colour of the live region */
+  .intro-cap{display:inline-block;font-size:12px;letter-spacing:.085em;text-transform:uppercase;font-weight:700;
+       color:var(--muted);margin:14px 0 0;padding:6px 15px;border-radius:99px;line-height:1.35;
+       transition:color .35s ease,background-color .35s ease;}
+  /* standing affordance: the tour names regions, this tells you that you can drive it */
+  .intro-hint{font-size:12px;color:var(--muted);margin:9px 0 0;letter-spacing:.01em;
+       transition:opacity .3s ease;}
+  .intro-hint.dim{opacity:.28;}
   .intro-lead{font-size:25px;line-height:1.4;font-weight:700;letter-spacing:-.01em;margin:0 0 16px;}
-  .intro-body{font-size:15.5px;line-height:1.65;color:#555;margin:0 0 28px;}
+  .intro-body{font-size:15.5px;line-height:1.65;color:var(--body);margin:0 0 26px;}
   #startbtn{font-size:16px;font-weight:650;color:#fff;background:var(--accent);border:none;border-radius:12px;
        padding:15px 36px;cursor:pointer;transition:all .14s;box-shadow:0 6px 18px rgba(192,20,31,.24);}
-  #startbtn:hover:not(:disabled){background:#a5101a;transform:translateY(-2px);box-shadow:0 9px 22px rgba(192,20,31,.30);}
-  #startbtn:disabled{background:#dcbcbe;cursor:not-allowed;box-shadow:none;transform:none;}
+  #startbtn:hover:not(:disabled){background:var(--accent-h);transform:translateY(-2px);box-shadow:0 9px 22px rgba(192,20,31,.30);}
+  #startbtn:disabled{background:var(--disabled);cursor:not-allowed;box-shadow:none;transform:none;}
   .intro-note{font-size:12px;color:var(--muted);margin:18px 0 0;letter-spacing:.03em;text-align:center;}
   .hometown-box{margin:2px 0 20px;}
   .hometown-label{display:block;font-size:13px;color:var(--ink);font-weight:600;margin-bottom:7px;}
@@ -775,30 +789,30 @@ html = """<!DOCTYPE html>
        max-height:230px;overflow-y:auto;display:none;text-align:left;}
   .combo-item{padding:9px 12px;font-size:14px;border-radius:7px;cursor:pointer;color:var(--ink);}
   .combo-item .cc{color:var(--muted);font-weight:400;}
-  .combo-item:hover,.combo-item.active{background:#fdf0f0;color:var(--accent);}
+  .combo-item:hover,.combo-item.active{background:var(--sel);color:var(--accent);}
   .combo-item:hover .cc,.combo-item.active .cc{color:var(--accent);}
   /* first (hometown) question: a distinct tinted card so it doesn't look like a dialect Q */
-  .htq{background:#f1ece2;border:1.5px solid var(--line);border-radius:14px;padding:16px;}
+  .htq{background:var(--soft);border:1.5px solid var(--line);border-radius:14px;padding:16px;}
   .htq-note{font-size:12px;color:var(--muted);margin:0 0 12px;line-height:1.45;}
   .or-div{display:flex;align-items:center;gap:12px;color:var(--muted);font-size:11px;
        text-transform:uppercase;letter-spacing:.09em;margin:14px 0;}
-  .or-div::before,.or-div::after{content:"";flex:1;height:1px;background:#dad3c6;}
+  .or-div::before,.or-div::after{content:"";flex:1;height:1px;background:var(--line2);}
   .altbtn{width:100%%;padding:12px 14px;font-size:13.5px;line-height:1.35;background:transparent;
-       border:1.5px dashed #c7c0b1;border-radius:10px;color:var(--muted);cursor:pointer;transition:all .12s;}
-  .altbtn:hover{border-color:var(--accent);color:var(--accent);background:#fff;}
-  .altbtn.chosen{border-style:solid;border-color:var(--accent);color:var(--accent);background:#fdf0f0;}
+       border:1.5px dashed var(--line2);border-radius:10px;color:var(--muted);cursor:pointer;transition:all .12s;}
+  .altbtn:hover{border-color:var(--accent);color:var(--accent);background:var(--card);}
+  .altbtn.chosen{border-style:solid;border-color:var(--accent);color:var(--accent);background:var(--sel);}
   .consent{display:flex;align-items:flex-start;gap:8px;font-size:12px;color:var(--muted);
        margin:0 0 18px;text-align:left;line-height:1.45;cursor:pointer;}
   .consent input{margin:1px 0 0;flex:0 0 auto;width:15px;height:15px;accent-color:var(--accent);cursor:pointer;}
-  .tlink{color:#0a7a63;text-decoration:underline;cursor:help;position:relative;}
+  .tlink{color:var(--teal);text-decoration:underline;cursor:help;position:relative;}
   .terms-pop{display:none;position:absolute;bottom:150%%;left:0;width:330px;max-width:80vw;font-size:11.5px;
-       line-height:1.55;color:#333;text-align:left;font-weight:400;background:var(--card);border:1px solid var(--line);
+       line-height:1.55;color:var(--body);text-align:left;font-weight:400;background:var(--card);border:1px solid var(--line);
        border-radius:10px;padding:12px 14px;box-shadow:0 10px 26px rgba(0,0,0,.18);z-index:60;}
   .tlink:hover .terms-pop,.tlink.open .terms-pop{display:block;}
   .aboutwrap{position:relative;display:inline-block;vertical-align:middle;}
-  .aboutbtn{color:#0a7a63;cursor:help;font-size:15px;line-height:1;}
+  .aboutbtn{color:var(--teal);cursor:help;font-size:15px;line-height:1;}
   .aboutinfo{display:none;position:absolute;bottom:150%%;left:50%%;transform:translateX(-50%%);width:430px;max-width:88vw;
-       font-size:12.5px;line-height:1.6;color:#333;text-align:left;background:var(--card);border:1px solid var(--line);
+       font-size:12.5px;line-height:1.6;color:var(--body);text-align:left;background:var(--card);border:1px solid var(--line);
        border-radius:10px;padding:14px 16px;box-shadow:0 10px 28px rgba(0,0,0,.18);z-index:60;letter-spacing:normal;}
   .aboutinfo::after{content:"";position:absolute;top:100%%;left:50%%;transform:translateX(-50%%);
        border:7px solid transparent;border-top-color:var(--card);}
@@ -838,7 +852,8 @@ html = """<!DOCTYPE html>
     <div class="intro-panels">
     <div class="intro-left">
       <div id="introcvwrap"><canvas id="introcv"></canvas><div id="introtip"></div></div>
-      <p class="intro-cap" id="introcap">Hover the map to explore the dialect groups</p>
+      <p class="intro-cap" id="introcap">&mdash;</p>
+      <p class="intro-hint" id="introhint">Hover over the map to explore each dialect</p>
     </div>
     <div class="intro-right">
       <p class="intro-lead">How you say a few everyday words, and what you call bread, your evening meal, or a splinter, quietly gives away where in Britain you&rsquo;re from.</p>
@@ -895,6 +910,11 @@ const QUESTIONS=[
   // first question: where did you grow up? (a GB town type-ahead, or "not from GB").
   // Not a heat-map question — collected (with consent) for future training, not scored.
   {id:"hometown",text:"Where in Great Britain did you grow up?",hometownq:true},
+  {id:"singerfinger",text:"Do the words <i>singer</i> and <i>finger</i> rhyme for you?",
+   tag:"real data",real:true,metric:"pct",grid:"singerfinger",
+   info:"singerfinger",infoLabel:"velar nasal plus",
+   opts:[{label:"Yes, they rhyme",v:1,word:"rhyme singer/finger"},
+         {label:"No, they sound different",v:0,word:"keep them distinct"}]},
   {id:"skiveclass",text:"What do you call skipping school without permission?",
    tag:"real data (BBC Voices, via Grieve et al. 2019)",real:true,phon:false,multi:true,metric:"prevalence",
    info:"skiveclass",infoLabel:"words for skipping school",
@@ -1020,6 +1040,7 @@ const ETYM={
   northforce:"<b>The NORTH&ndash;FORCE merger</b> &mdash; whether <i>horse</i> and <i>hoarse</i> (or <i>for</i> and <i>four</i>, <i>war</i> and <i>wore</i>) sound identical. Most of England and Wales merged them long ago, so they rhyme; <b>Scotland</b> keeps them clearly distinct, as do pockets around <b>Manchester</b> and Merseyside.",
   forcecure:"<b>The CURE&ndash;FORCE merger</b> &mdash; whether <i>poor</i> and <i>pour</i> (or <i>sure</i> and <i>shore</i>, <i>tour</i> and <i>tore</i>) sound identical. Across most of England they have merged, so they rhyme; the older distinct <i>poor</i>/<i>sure</i> vowel /&#650;&#601;/ survives in <b>Scotland</b>, the <b>North East</b>, and <b>West Yorkshire</b>.",
   youse:"<b>Plural &lsquo;yous(e)&rsquo;</b> &mdash; a second-person plural pronoun, filling the gap English left when <i>thou/you</i> collapsed to just <i>you</i>. Strongest in <b>Scotland</b> and the <b>North East</b> (Newcastle, Sunderland, Middlesbrough), fading through the Midlands, and rare in southern England, where <i>you guys</i> or plain <i>you</i> is used instead.",
+  singerfinger:"<b>Velar nasal plus</b> (also called <i>ng</i>-coalescence) &mdash; whether a hard [&#609;] survives after the <i>ng</i>, so <i>singer</i> is [s&#618;&#331;&#609;&#601;] and rhymes with <i>finger</i>. English generally dropped that [&#609;] around the 17th century, but the change never took hold across the <b>North West</b> and <b>West Midlands</b>: Manchester, Liverpool, Stoke, Birmingham and Cheshire keep it, as does north-east Wales (Flintshire, Wrexham). Elsewhere &mdash; the North East, East Anglia, the South &mdash; the two words are distinct.",
   thfronting:"<b>TH-fronting</b> &mdash; replacing the &lsquo;th&rsquo; sounds /&#952;/ and /&#240;/ with /f/ and /v/, so <i>think</i> &rarr; <i>fink</i> and <i>brother</i> &rarr; <i>bruvver</i>. Once a London (Cockney) feature, it has spread rapidly since the late 20th century and is now common across much of urban England, especially among younger speakers &mdash; while remaining rare in Scotland, Wales, and rural areas generally.",
   skiveclass:"<b>Words for skipping school</b> without permission, from the BBC Voices survey. <b>Skive</b> is the general British term, strongest in Scotland and the South West; <b>bunk off</b> is a London/South East form; <b>wag</b> belongs to the North West and North East; <b>play hookey</b> is a chiefly North Eastern (Tyneside) usage; <b>skip</b> is used more loosely nationwide, without a single clear home region.",
   trapbath:"<b>The trap&ndash;bath split</b> &mdash; in the 18th century southern English lengthened the <i>a</i> in a set of words (<i>bath, grass, last, dance</i>) to /&#593;&#720;/, splitting them from TRAP words (<i>cat, trap</i>). The North, Wales and Scotland kept the short /a/ &mdash; so a northerner says [ba&#952;], a southerner [b&#593;&#720;&#952;]. It&rsquo;s one of the sharpest north&ndash;south markers.",
@@ -1078,7 +1099,8 @@ function render(){
   // progress bar tracks the CURRENT question (idx), so it stays in sync with
   // "Question N of M" and moves with Back/Continue
   const atEnd=idx>=QUESTIONS.length;
-  document.getElementById("pbar").style.width=(atEnd?100:(idx+1)/QUESTIONS.length*100)+"%%";
+  // hometown is a pre-question: the bar only starts moving with the real questions
+  document.getElementById("pbar").style.width=(atEnd?100:idx/(QUESTIONS.length-1)*100)+"%%";
   // back is always available: on the first question it returns to the landing page
   back.style.display="inline";
   back.textContent=(idx===0)?"\\u2190 intro":"\\u2190 back";
@@ -1096,16 +1118,24 @@ function render(){
     } else {
       const top=placeName(cs.place);   // nearest named place to the smoothed peak
       const runners=scored.filter(s=>s.p!==cs.place && s.v>=0.7*scored[0].v).slice(0,2).map(s=>s.p.name);
+      const least=scored.length?scored[scored.length-1].p:null;   // bottom of the same ranking = the blue end of the map
+      const ms=matchScore(cs.place);
       done.innerHTML="<div style='font-size:13px;color:#8a857c;letter-spacing:.04em;text-transform:uppercase;margin-bottom:8px'>Based on your "+cs.count+" answers</div>"+
         "<div style='font-size:15px;color:#555;margin-bottom:2px'>You sound most like</div>"+
         "<div style='font-size:30px;font-weight:750;line-height:1.15;color:var(--accent)'>"+top+"</div>"+
-        (runners.length?"<div style='font-size:13px;color:#8a857c;margin-top:12px'>Also close: "+runners.join(", ")+"</div>":"")+
-        "<div style='font-size:11.5px;color:#8a857c;margin-top:18px;line-height:1.5'>&#9733; marks your closest match. This is a preliminary result &mdash; a combined &ldquo;place me&rdquo; map built from every answer.</div>";
+        (ms!=null?"<div style='margin-top:16px;max-width:300px'>"+
+            "<div style='font-size:13px;color:#555;margin-bottom:5px'>Accent match</div>"+
+            "<div style='height:8px;background:#e9e4da;border-radius:99px;overflow:hidden'>"+
+              "<div style='height:100%%;width:"+ms+"%%;background:linear-gradient(to right,#e79aa1,var(--accent));border-radius:99px'></div></div>"+
+            "<div style='font-size:12.5px;color:#8a857c;margin-top:6px'>"+matchLabel(ms)+"</div>"+
+          "</div>":"")+
+        (runners.length?"<div style='font-size:13px;color:#8a857c;margin-top:14px'>Also close: "+runners.join(", ")+"</div>":"")+
+        (least?"<div style='font-size:13px;color:var(--muted);margin-top:6px'>Least like: <b style='color:"+rgbOf(THEME.blue)+";font-weight:650'>"+placeName(least)+"</b></div>":"");
     }
     return;
   }
   const q=QUESTIONS[idx];
-  prog.textContent="Question "+(idx+1)+" of "+QUESTIONS.length;
+  prog.textContent=QUESTIONS[idx].hometownq?"Before we start":"Question "+idx+" of "+(QUESTIONS.length-1);
   qt.style.display="";qt.innerHTML=q.text; box.style.display="";box.innerHTML="";done.style.display="none";
   const ans=answers[q.id];
   const contLabel=(idx===QUESTIONS.length-1)?"Finish →":"Continue →";
@@ -1127,8 +1157,15 @@ function render(){
       if(answers.hometown==="notgb") delete answers.hometown; else answers.hometown="notgb";
       render();
     };
-    next.style.display="block"; next.disabled=false; next.textContent=contLabel;
-    next.onclick=()=>{ leaveHometown(); idx++; render(); };
+    // hometown is required: you must either name a town or explicitly say you
+    // didn't grow up in GB. Continue stays disabled until one of those is true,
+    // so the question can't be skipped past on the way into the quiz.
+    const htIn=document.getElementById("hometown");
+    const htOK=()=>answers.hometown==="notgb" || (htIn && htIn.value.trim().length>0);
+    const syncNext=()=>{ next.disabled=!htOK(); };
+    if(htIn){ htIn.addEventListener("input",syncNext); htIn.addEventListener("picked",syncNext); }
+    next.style.display="block"; next.textContent=contLabel; syncNext();
+    next.onclick=()=>{ if(!htOK())return; leaveHometown(); idx++; render(); };
     return;
   }
   const answered=q.multi?(Array.isArray(ans)&&ans.length>0):(ans!==undefined);
@@ -1191,10 +1228,20 @@ function restartQuiz(){ idx=0; revealedSet.clear(); for(const k in answers)delet
 document.getElementById("restart").onclick=restartQuiz;
 document.getElementById("startover").onclick=restartQuiz;
 
+// ---- theme ----------------------------------------------------------------
+// Canvas pixels can't inherit CSS variables, so every colour the maps draw with
+// lives here and is swapped wholesale when the theme flips. The diverging scale
+// in particular cannot just be reused: its midpoint is near-white, which would
+// glow against a dark page, so dark mode gets its own dark neutral.
+const THEME={grid:"#c9c9d2", nullCell:[214,214,220], nullDot:[200,200,205], dotStroke:"#2b2b2b",
+      halo:"#ffffff", star:[214,16,32],
+      blue:[18,86,222], mid:[232,232,236], red:[214,16,32], mute:208, muteMix:0.54};
+const rgbOf=a=>"rgb("+a[0]+","+a[1]+","+a[2]+")";
+function heatBar(){return "linear-gradient(to right,"+rgbOf(THEME.blue)+","+rgbOf(THEME.mid)+","+rgbOf(THEME.red)+")";}
 function heat(t){t=Math.max(0,Math.min(1,t));
   // stretch contrast around the midpoint so the maps read boldly instead of washing out
   t=Math.max(0,Math.min(1, 0.5+(t-0.5)*1.55));
-  const blue=[18,86,222],white=[232,232,236],red=[214,16,32];
+  const blue=THEME.blue,white=THEME.mid,red=THEME.red;
   const mix=(A,B,k)=>[Math.round(A[0]+(B[0]-A[0])*k),Math.round(A[1]+(B[1]-A[1])*k),Math.round(A[2]+(B[2]-A[2])*k)];
   return t<0.5?mix(blue,white,t/0.5):mix(white,red,(t-0.5)/0.5);}
 
@@ -1203,6 +1250,63 @@ function heat(t){t=Math.max(0,Math.min(1,t));
 // scattered or nothing stands out, say "multiple regions".
 function joinRegions(a){return a.length<=1?a[0]:a.slice(0,-1).join(", ")+" &amp; "+a[a.length-1];}
 // score each representative place by the surface value around it, most-representative first
+// ---- accent match score: how "local" your answer set is for a given place ----
+// For each answered question: how common is YOUR answer there, as a fraction of
+// the most common answer there. Averaged over questions this reads as "you gave
+// the local answer this much of the time" — a correlation-style 0-100 fit that
+// is comparable between places (a place where every variant is 50/50 can still
+// score 100, because the denominator is that place's own best answer).
+// Raw fit is scored for EVERY place, then the winner is expressed against the
+// all-places average. Raw fit alone has a high floor (a random answer set still
+// scores about two-thirds, as most variants are common in most places), which
+// would make every result look like a strong match. Measuring the winner's
+// headroom above the average place is self-calibrating and needs no constants.
+function matchScores(){
+  const perQ=[];
+  for(const q of QUESTIONS){
+    if(q.hometownq)continue;
+    const a=answers[q.id]; if(a===undefined)continue;
+    const mine=answerSurface(q,a); if(!mine)continue;
+    const alts=[];
+    const vals=q.slider?[1,2,3,4,5]:q.opts.map(o=>o.v);
+    for(const v of vals){ const s=answerSurface(q,q.multi?[v]:v); if(s)alts.push(s); }
+    perQ.push({mine:mine,alts:alts});
+  }
+  if(!perQ.length) return null;
+  const out=new Map();
+  for(const p of PLACES){
+    const R=p.row|0,C=p.col|0;
+    const valAt=s=>{ let t=0,n=0;
+      for(let dr=-1;dr<=1;dr++)for(let dc=-1;dc<=1;dc++){const r=R+dr,c=C+dc;
+        if(r<0||r>=H_||c<0||c>=W)continue; const v=s[r]?s[r][c]:null; if(v!=null){t+=v;n++;}}
+      return n?t/n:null; };
+    let sum=0,n=0;
+    for(const e of perQ){
+      const mv=valAt(e.mine); if(mv==null)continue;
+      let best=mv;
+      for(const s of e.alts){ const t=valAt(s); if(t!=null&&t>best)best=t; }
+      if(best>1e-6){ sum+=mv/best; n++; }
+    }
+    out.set(p, n?sum/n:0);
+  }
+  return out;
+}
+function matchScore(place){
+  if(!place) return null;
+  const fits=matchScores(); if(!fits) return null;
+  const raw=fits.get(place); if(raw==null) return null;
+  const all=[...fits.values()];
+  const base=all.reduce((a,b)=>a+b,0)/all.length;
+  const headroom=Math.max(1e-6, 1-base);
+  return Math.max(0, Math.min(100, Math.round((raw-base)/headroom*100)));
+}
+function matchLabel(s){
+  if(s>=85)return "You sound like a local";
+  if(s>=70)return "A strong match";
+  if(s>=55)return "A good match";
+  if(s>=40)return "A partial match";
+  return "A mixed accent &mdash; no single home";
+}
 function matchPlaces(surf){
   return PLACES.map(p=>{let s=0,n=0;
     for(let dr=-2;dr<=2;dr++)for(let dc=-2;dc<=2;dc++){const r=p.row+dr,c=p.col+dc;
@@ -1259,7 +1363,7 @@ function drawStar(x,y,r,fill,strokeW){
   for(let i=0;i<10;i++){const ang=Math.PI/5*i-Math.PI/2;const rad=(i%%2===0)?r:r*0.45;
     const px=x+Math.cos(ang)*rad,py=y+Math.sin(ang)*rad; i===0?cx.moveTo(px,py):cx.lineTo(px,py);}
   cx.closePath();cx.fillStyle=fill;cx.fill();
-  if(strokeW){cx.lineWidth=strokeW;cx.strokeStyle="#2b2b2b";cx.stroke();}
+  if(strokeW){cx.lineWidth=strokeW;cx.strokeStyle=THEME.dotStroke;cx.stroke();}
 }
 function drawMap(q,ans){
   document.getElementById("right").style.display="";   // map revealed -> show the right panel
@@ -1321,9 +1425,9 @@ function drawMap(q,ans){
   cx.clearRect(0,0,cv.width,cv.height);
   for(let r=0;r<H_;r++)for(let c=0;c<W;c++){
     if(!land[r][c])continue;
-    cx.fillStyle="#c9c9d2";cx.fillRect(c*CELL,r*CELL,CELL,CELL);
+    cx.fillStyle=THEME.grid;cx.fillRect(c*CELL,r*CELL,CELL,CELL);
     const v=surf[r][c];
-    const [rr,gg,bb]=(incon||v==null)?[214,214,220]:hcol(v);
+    const [rr,gg,bb]=(incon||v==null)?THEME.nullCell:hcol(v);
     cx.fillStyle="rgb("+rr+","+gg+","+bb+")";cx.fillRect(c*CELL,r*CELL,CELL-GAP,CELL-GAP);
   }
   // matchPlaces is used only to NAME the result (e.g. "Liverpool (Scouse)"); the map keeps
@@ -1349,20 +1453,20 @@ function drawMap(q,ans){
   // ordinary cities as circles (skip any spot that will get a star)
   for(const ct of cities){ if(starKey.has(ct.col+","+ct.row))continue;
     const v=surf[ct.row|0]?surf[ct.row|0][ct.col|0]:null;
-    const [rr,gg,bb]=(incon||v==null)?[200,200,205]:hcol(v);
+    const [rr,gg,bb]=(incon||v==null)?THEME.nullDot:hcol(v);
     cx.beginPath();cx.arc((ct.col+0.5)*CELL,(ct.row+0.5)*CELL,5,0,7);
-    cx.fillStyle="rgb("+rr+","+gg+","+bb+")";cx.fill();cx.lineWidth=2;cx.strokeStyle="#2b2b2b";cx.stroke();}
+    cx.fillStyle="rgb("+rr+","+gg+","+bb+")";cx.fill();cx.lineWidth=2;cx.strokeStyle=THEME.dotStroke;cx.stroke();}
   // representative places as bold, red-shaded stars with a white halo (stand out clearly)
   for(const p of starPlaces){const v=surf[p.row]?surf[p.row][p.col]:null;
-    const [rr,gg,bb]=(v==null)?[200,200,205]:hcol(v);
+    const [rr,gg,bb]=(v==null)?THEME.nullDot:hcol(v);
     const x=(p.col+0.5)*CELL,y=(p.row+0.5)*CELL;
-    drawStar(x,y,16,"#fff",0);                              // white halo
+    drawStar(x,y,16,THEME.halo,0);                              // white halo
     drawStar(x,y,12,"rgb("+rr+","+gg+","+bb+")",3);}        // the star
   // legend reflects the scale in use: word maps run pale->red; yes/no maps run blue->red
   {const lg=document.getElementById("legend"); const sp=lg.querySelectorAll("span");
    if(seq){ sp[1].style.background="linear-gradient(to right,rgb(232,232,236),rgb(214,16,32))";
      sp[0].textContent="not used here"; sp[2].textContent="common"; }
-   else { sp[1].style.background="linear-gradient(to right,rgb(18,86,222),rgb(232,232,236),rgb(214,16,32))";
+   else { sp[1].style.background=heatBar();
      sp[0].textContent="uncommon"; sp[2].textContent="common"; }}
   // no more "closest to" — the STAR is the result. Localised answers name their place(s);
   // broad/widespread answers just describe the pattern (the map shows it).
@@ -1422,16 +1526,32 @@ function blurLand(surf, passes){
 function combinedSurface(){
   const surfs=[];
   for(const q of QUESTIONS){ if(q.hometownq)continue; const a=answers[q.id]; if(a===undefined)continue; const s=answerSurface(q,a); if(s)surfs.push(s); }
+  // z-score each surface before averaging: a sharply localized answer (lolly ice,
+  // spelk) then counts as much as a broad yes/no plateau. Without this the wide
+  // plateaus swamp the localized signals and drag the peak toward their centroid
+  // (a fully "London" answer set used to land on Margate).
+  const zs=[];
+  for(const s of surfs){ let sum=0,sq=0,n=0;
+    for(let r=0;r<H_;r++)for(let c=0;c<W;c++){const v=s[r]?s[r][c]:null; if(v!=null){sum+=v;sq+=v*v;n++;}}
+    const mu=n?sum/n:0, sd=n?Math.sqrt(Math.max(sq/n-mu*mu,1e-9)):1;
+    zs.push({s:s,mu:mu,sd:sd});}
   let comb=[];
   for(let r=0;r<H_;r++){comb.push([]);for(let c=0;c<W;c++){ if(!land[r][c]){comb[r].push(null);continue;}
-    let sum=0,n=0; for(const s of surfs){const v=s[r]?s[r][c]:null; if(v!=null){sum+=v;n++;}} comb[r].push(n?sum/n:null);}}
+    let sum=0,n=0; for(const z of zs){const v=z.s[r]?z.s[r][c]:null; if(v!=null){sum+=(v-z.mu)/z.sd;n++;}} comb[r].push(n?sum/n:null);}}
   comb=blurLand(comb,3);   // Gaussian smoothing over the overlaid maps
   let mx=-1e9,mn=1e9,pr=-1,pc=-1;
   for(let r=0;r<H_;r++)for(let c=0;c<W;c++){const m=comb[r][c]; if(m!=null){if(m>mx){mx=m;pr=r;pc=c;} if(m<mn)mn=m;}}
   if(mx>mn) for(let r=0;r<H_;r++)for(let c=0;c<W;c++){ if(comb[r][c]!=null) comb[r][c]=(comb[r][c]-mn)/(mx-mn); }
-  // nearest named place to the geographic peak
-  let best=null,bd=1e9; for(const p of PLACES){const d=Math.hypot(p.col-pc,p.row-pr); if(d<bd){bd=d;best=p;}}
-  return {surf:comb, count:surfs.length, peak:[pr,pc], place:best};
+  // winner = highest 5x5 neighbourhood mean around a NAMED place (same scoring
+  // as the runners-up list), not the raw global peak cell: blurLand averages
+  // over land only, which flatters coastal cells (fewer neighbours to dilute
+  // them), so a raw-peak rule kept snapping inland-London answers to the coast
+  let best=null,bv=-1e9;
+  for(const p of PLACES){let s=0,n=0;
+    for(let dr=-2;dr<=2;dr++)for(let dc=-2;dc<=2;dc++){const r=(p.row|0)+dr,c=(p.col|0)+dc;
+      if(r<0||r>=H_||c<0||c>=W)continue; const v=comb[r]?comb[r][c]:null; if(v!=null){s+=v;n++;}}
+    const sc=n?s/n:-1e9; if(sc>bv){bv=sc;best=p;}}
+  return {surf:comb, count:surfs.length, peak:best?[best.row|0,best.col|0]:[pr,pc], place:best};
 }
 function drawCombined(cs){
   const comb=cs.surf;
@@ -1444,16 +1564,16 @@ function drawCombined(cs){
   const col=v=>heat(v);   // full blue -> white -> red diverging = least .. most like you
   cx.clearRect(0,0,cv.width,cv.height);
   for(let r=0;r<H_;r++)for(let c=0;c<W;c++){ if(!land[r][c])continue;
-    cx.fillStyle="#c9c9d2";cx.fillRect(c*CELL,r*CELL,CELL,CELL);
-    const v=comb[r][c]; const [rr,gg,bb]=(v==null)?[214,214,220]:col(v);
+    cx.fillStyle=THEME.grid;cx.fillRect(c*CELL,r*CELL,CELL,CELL);
+    const v=comb[r][c]; const [rr,gg,bb]=(v==null)?THEME.nullCell:col(v);
     cx.fillStyle="rgb("+rr+","+gg+","+bb+")";cx.fillRect(c*CELL,r*CELL,CELL-GAP,CELL-GAP);}
   const star=cs.place;   // the named place nearest the smoothed peak
   for(const ct of cities){ if(star&&star.col===ct.col&&star.row===ct.row)continue;
-    const v=comb[ct.row|0]?comb[ct.row|0][ct.col|0]:null; const [rr,gg,bb]=(v==null)?[200,200,205]:col(v);
-    cx.beginPath();cx.arc((ct.col+0.5)*CELL,(ct.row+0.5)*CELL,5,0,7);cx.fillStyle="rgb("+rr+","+gg+","+bb+")";cx.fill();cx.lineWidth=2;cx.strokeStyle="#2b2b2b";cx.stroke();}
-  if(star){const x=(star.col+0.5)*CELL,y=(star.row+0.5)*CELL; drawStar(x,y,17,"#fff",0); drawStar(x,y,13,"rgb(214,16,32)",3);}
+    const v=comb[ct.row|0]?comb[ct.row|0][ct.col|0]:null; const [rr,gg,bb]=(v==null)?THEME.nullDot:col(v);
+    cx.beginPath();cx.arc((ct.col+0.5)*CELL,(ct.row+0.5)*CELL,5,0,7);cx.fillStyle="rgb("+rr+","+gg+","+bb+")";cx.fill();cx.lineWidth=2;cx.strokeStyle=THEME.dotStroke;cx.stroke();}
+  if(star){const x=(star.col+0.5)*CELL,y=(star.row+0.5)*CELL; drawStar(x,y,17,THEME.halo,0); drawStar(x,y,13,rgbOf(THEME.star),3);}
   {const lg=document.getElementById("legend"); const sp=lg.querySelectorAll("span");
-   sp[1].style.background="linear-gradient(to right,rgb(18,86,222),rgb(232,232,236),rgb(214,16,32))"; sp[0].textContent="least like you"; sp[2].textContent="most like you";}
+   sp[1].style.background=heatBar(); sp[0].textContent="least like you"; sp[2].textContent="most like you";}
   SHOWN=null;   // no hover on the summary map (preliminary)
   document.getElementById("match").innerHTML="";
   return matchPlaces(comb);
@@ -1513,42 +1633,121 @@ cv.addEventListener("click",(e)=>{
 });
 
 // ---- landing page hero map: smooth (not the quiz's chunky pixel style) ----
+// bumped on every drawMini() call so a re-render (e.g. theme flip) retires the
+// previous requestAnimationFrame loop instead of leaving two running at once
+let miniToken=0;
 function drawMini(){
+  const myToken=++miniToken;
   // Draw at a large supersampled resolution (one flat-coloured square per
   // grid cell, no gaps) then let the browser's own bilinear image scaling
   // shrink that down to the on-page size. Shrinking a high-res hard-edged
   // image is what real anti-aliasing looks like -- crisp region colours,
   // smoothly stepped edges -- as opposed to a Gaussian blur, which softens
   // the whole picture into a fog. That's the "8-bit"/blurry look to avoid.
-  const SS=10;
-  const off=document.createElement("canvas"); off.width=W*SS; off.height=H_*SS;
-  const ox=off.getContext("2d");
-  for(let r=0;r<H_;r++)for(let c=0;c<W;c++){
-    const di=dialectGrid[r][c]; if(di<0) continue;
-    const col=dialectColors[di][1];
-    ox.fillStyle="rgb("+col[0]+","+col[1]+","+col[2]+")";
-    ox.fillRect(c*SS,r*SS,SS,SS);
+  const SS=6;
+  const PW=W*SS, PH=H_*SS;
+  // cells grouped by region, so a region can be repainted on its own
+  const cellsBy=[]; for(let i=0;i<dialectColors.length;i++) cellsBy.push([]);
+  for(let r=0;r<H_;r++)for(let c=0;c<W;c++){const d=dialectGrid[r][c]; if(d>=0) cellsBy[d].push(r*W+c);}
+  function blank(){const o=document.createElement("canvas");o.width=PW;o.height=PH;return o;}
+  // one pre-rendered layer per region (bounded to its own bounding box, so the
+  // whole set costs a few map-areas of memory rather than one full canvas each)
+  const layers=[];
+  for(let i=0;i<dialectColors.length;i++){
+    const cells=cellsBy[i];
+    if(!cells.length){layers.push(null);continue;}
+    let r0=1e9,r1=-1,c0=1e9,c1=-1;
+    for(const k of cells){const r=(k/W)|0,c=k%%W; if(r<r0)r0=r; if(r>r1)r1=r; if(c<c0)c0=c; if(c>c1)c1=c;}
+    const o=document.createElement("canvas");
+    o.width=(c1-c0+1)*SS; o.height=(r1-r0+1)*SS;
+    const x=o.getContext("2d");
+    const col=dialectColors[i][1];
+    x.fillStyle="rgb("+col[0]+","+col[1]+","+col[2]+")";
+    for(const k of cells){const r=(k/W)|0,c=k%%W; x.fillRect((c-c0)*SS,(r-r0)*SS,SS,SS);}
+    layers.push({cv:o,x:c0*SS,y:r0*SS});
   }
-  const mc=document.getElementById("introcv"); mc.width=W*2; mc.height=H_*2;
-  mc.style.width="300px";
+  // muted base: every region desaturated toward the page background, so the
+  // highlighted one reads clearly without the map going flat grey
+  const baseC=blank(); {const x=baseC.getContext("2d");
+    for(let i=0;i<dialectColors.length;i++){
+      const col=dialectColors[i][1];
+      const g=col[0]*0.3+col[1]*0.5+col[2]*0.2;
+      const mix=t=>Math.round(g*(0.46-THEME.muteMix*0.30)+t*0.16+THEME.mute*THEME.muteMix);
+      x.fillStyle="rgb("+mix(col[0])+","+mix(col[1])+","+mix(col[2])+")";
+      for(const k of cellsBy[i]){const r=(k/W)|0,c=k%%W; x.fillRect(c*SS,r*SS,SS,SS);}
+    }}
+  const buf=blank(), bx=buf.getContext("2d");
+  const mc=document.getElementById("introcv"); mc.width=W*3; mc.height=H_*3;
   const mx=mc.getContext("2d");
   mx.imageSmoothingEnabled=true; mx.imageSmoothingQuality="high";
-  mx.clearRect(0,0,mc.width,mc.height);
-  mx.drawImage(off,0,0,mc.width,mc.height);
-  // hover/touch -> name the dialect group under the cursor (replaces the old static key)
-  const tip=document.getElementById("introtip"), cap=document.getElementById("introcap");
-  function miniTip(clientX,clientY){const rect=mc.getBoundingClientRect();
+  const tip=document.getElementById("introtip"), cap=document.getElementById("introcap"),
+        hint=document.getElementById("introhint");
+
+  // tour order: north -> south, skipping slivers too small to register at this size
+  const tour=[];
+  for(let i=0;i<dialectColors.length;i++) if(cellsBy[i].length>=22) tour.push(i);
+  tour.sort((a,a2)=>{const m=l=>cellsBy[l].reduce((s,k)=>s+((k/W)|0),0)/cellsBy[l].length;
+    return m(a)-m(a2);});
+  const BEAT=2500, FADE=700;
+  // "inside" is tracked from enter/leave, NOT from whether a region sits under the
+  // cursor: the canvas box includes sea, and deriving it from the region lookup
+  // made the tour start advancing again whenever the pointer crossed open water.
+  let cur=tour.length?tour[0]:-1, prev=-1, fadeStart=-1e9, nextAt=0, inside=false, started=0;
+
+  function setLabel(di){
+    if(di<0){ cap.textContent="\\u2014"; cap.style.color=""; cap.style.backgroundColor=""; return; }
+    const nm=dialectColors[di][0], col=dialectColors[di][1];
+    cap.textContent=nm;
+    cap.style.color="rgb("+col[0]+","+col[1]+","+col[2]+")";
+    cap.style.backgroundColor="rgba("+col[0]+","+col[1]+","+col[2]+",.11)";
+  }
+  function show(di,t){ if(di===cur)return; prev=cur; cur=di; fadeStart=t; setLabel(di); }
+
+  function frame(t){
+    if(myToken!==miniToken) return;          // superseded by a newer drawMini()
+    if(!started) started=t;
+    if(!inside && t>=nextAt){                       // idle -> advance the tour
+      const i=tour.indexOf(cur);
+      show(tour[(i+1)%%tour.length]||tour[0], t);
+      nextAt=t+BEAT;
+    }
+    const a=Math.min(1,(t-fadeStart)/FADE);
+    bx.clearRect(0,0,PW,PH);
+    bx.globalAlpha=1; bx.drawImage(baseC,0,0);
+    if(a<1&&prev>=0&&layers[prev]){bx.globalAlpha=1-a;const L=layers[prev];bx.drawImage(L.cv,L.x,L.y);}
+    if(cur>=0&&layers[cur]){bx.globalAlpha=a;const L=layers[cur];bx.drawImage(L.cv,L.x,L.y);}
+    bx.globalAlpha=1;
+    mx.clearRect(0,0,mc.width,mc.height);
+    mx.drawImage(buf,0,0,mc.width,mc.height);
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+
+  // hover takes over the spotlight; leaving hands it back to the tour
+  function at(clientX,clientY){
+    const rect=mc.getBoundingClientRect();
     const c=Math.floor((clientX-rect.left)/(rect.width/W)), r=Math.floor((clientY-rect.top)/(rect.height/H_));
-    const di=(r>=0&&r<H_&&c>=0&&c<W)?dialectGrid[r][c]:-1;
-    if(di>=0){const [nm,col]=dialectColors[di];
+    return (r>=0&&r<H_&&c>=0&&c<W)?dialectGrid[r][c]:-1;
+  }
+  function enter(){ inside=true; if(hint)hint.classList.add("dim"); }
+  function leave(delay){ inside=false; tip.style.opacity=0;
+    if(hint)hint.classList.remove("dim"); nextAt=performance.now()+delay; }
+  function onMove(clientX,clientY){
+    enter();
+    const di=at(clientX,clientY), rect=mc.getBoundingClientRect(), t=performance.now();
+    if(di>=0){
+      show(di,t);
+      const nm=dialectColors[di][0], col=dialectColors[di][1];
       tip.textContent=nm; tip.style.background="rgb("+col[0]+","+col[1]+","+col[2]+")";
       tip.style.left=(clientX-rect.left)+"px"; tip.style.top=(clientY-rect.top)+"px"; tip.style.opacity=1;
-      cap.textContent=nm; cap.style.color="rgb("+col[0]+","+col[1]+","+col[2]+")";
-    } else { tip.style.opacity=0; }}
-  mc.onmousemove=(e)=>miniTip(e.clientX,e.clientY);
-  mc.onmouseleave=()=>{tip.style.opacity=0; cap.textContent="Hover the map to explore the dialect groups"; cap.style.color="";};
-  mc.ontouchstart=(e)=>{if(e.touches[0])miniTip(e.touches[0].clientX,e.touches[0].clientY);};
-  mc.ontouchmove=(e)=>{if(e.touches[0]){e.preventDefault();miniTip(e.touches[0].clientX,e.touches[0].clientY);}};
+    } else { tip.style.opacity=0; }   // over sea: keep the last region lit, just drop the tooltip
+  }
+  mc.onmouseenter=enter;
+  mc.onmousemove=(e)=>onMove(e.clientX,e.clientY);
+  mc.onmouseleave=()=>leave(900);
+  mc.ontouchstart=(e)=>{if(e.touches[0])onMove(e.touches[0].clientX,e.touches[0].clientY);};
+  mc.ontouchmove=(e)=>{if(e.touches[0]){e.preventDefault();onMove(e.touches[0].clientX,e.touches[0].clientY);}};
+  mc.ontouchend=()=>leave(1600);
 }
 // ---- hometown: captured for FUTURE model training only, never used for the result ----
 // Right now it's just saved in the visitor's own browser (localStorage). To actually
@@ -1599,7 +1798,10 @@ function attachCombo(inp, list){
   let matches=[], active=-1;
   function close(){ list.style.display="none"; list.innerHTML=""; active=-1; inp.setAttribute("aria-expanded","false"); }
   function paint(){ [...list.children].forEach((li,i)=>li.classList.toggle("active",i===active)); }
-  function choose(t){ inp.value=t[0]+", "+t[1]; if(answers.hometown==="notgb") delete answers.hometown; close(); }
+  // "picked" (not "input") so listeners can react to a selection without
+  // re-triggering the type-ahead filter and reopening the dropdown
+  function choose(t){ inp.value=t[0]+", "+t[1]; if(answers.hometown==="notgb") delete answers.hometown; close();
+    inp.dispatchEvent(new CustomEvent("picked")); }
   function filter(){
     const q=inp.value.trim().toLowerCase();
     if(!q){ close(); return; }
