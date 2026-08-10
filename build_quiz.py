@@ -317,7 +317,84 @@ def point_blob(points, sigma):
     return np.where(land, v / 100.0, 0.0)
 
 
-grids_all = {"q1": grid_json(q1), "tvd": grid_json(decoded_surface("tvd", 0.05, 0.72)),
+# ---- school PE canvas shoes -------------------------------------------------
+# Straight from YouGov (Aug 2025, n~38,000), which published COUNTY-level rates
+# rather than the usual five broad regions -- so these are transcribed real
+# percentages, not values read off a picture. Nationally: plimsolls 53%,
+# pumps 23%, gym shoes 6%, daps 5%, sandshoes 5%.
+# YouGov's published Scottish regions -> the historic counties in this grid.
+# Their table breaks Scotland into 13 areas, which is finer than the article
+# prose suggested and corrects several of the estimates it implied.
+YG_TAYSIDE  = ["Angus", "Perthshire", "Kinross-shire"]
+YG_BORDERS  = ["Berwickshire", "Peeblesshire", "Roxburghshire", "Selkirkshire"]
+YG_GRAMPIAN = ["Aberdeenshire", "Banffshire", "Kincardineshire", "Morayshire"]
+YG_LOTHIAN  = ["Midlothian", "East Lothian", "West Lothian"]
+YG_HIGHLAND = ["Inverness-shire", "Ross-shire", "Cromartyshire", "Sutherland",
+               "Caithness", "Nairnshire", "Argyllshire", "Orkney", "Buteshire"]
+YG_CENTRAL  = ["Stirlingshire", "Clackmannanshire"]
+YG_DANDG    = ["Dumfriesshire", "Kirkcudbrightshire", "Wigtownshire"]
+
+FOOTWEAR = {
+    # the southern/eastern default; peaks in Norfolk at 91%. Scotland is far from
+    # zero on this one (19-39% depending on region), which the prose obscured.
+    "plimsolls": mk(50, [(EANG, 83), (SE_ENG, 79), (EMIDS, 72), (SW_ENG, 55), (WALES, 25),
+                         (YG_TAYSIDE, 39), (YG_BORDERS, 37), (YG_GRAMPIAN, 36),
+                         (YG_LOTHIAN, 32), (YG_HIGHLAND, 28), (YG_CENTRAL, 22),
+                         (YG_DANDG, 19)],
+                    {"Norfolk": 91, "Middlesex": 67,
+                     "Lancashire": 15, "Cheshire": 15, "Staffordshire": 15,
+                     "Warwickshire": 22, "Worcestershire": 25, "Shropshire": 26,
+                     "Yorkshire": 40, "Northumberland": 60, "Durham": 58,
+                     "Cumberland": 62, "Westmorland": 60,
+                     "Glamorgan": 20, "Monmouthshire": 20,
+                     "Gloucestershire": 40, "Somerset": 42,
+                     "Fife": 36, "Dunbartonshire": 30, "Ayrshire": 22,
+                     "Lanarkshire": 20, "Renfrewshire": 10}),
+    # North West + West Midlands; barely registers in Scotland (0-12%)
+    "pumps": mk(20, [(WMIDS, 62), (SE_ENG, 5), (EANG, 5), (NWALES, 45),
+                     (YG_HIGHLAND, 12), (YG_GRAMPIAN, 9), (YG_TAYSIDE, 8),
+                     (YG_LOTHIAN, 6), (YG_BORDERS, 6), (YG_DANDG, 4), (YG_CENTRAL, 0)],
+                {"Lancashire": 74, "Cheshire": 73, "Staffordshire": 72,
+                 "Derbyshire": 45, "Yorkshire": 40, "Nottinghamshire": 30,
+                 "Leicestershire": 25, "Warwickshire": 64, "Worcestershire": 60,
+                 "Cumberland": 25, "Westmorland": 28, "Durham": 20,
+                 "Northumberland": 15, "Middlesex": 6, "Kent": 3, "Sussex": 3,
+                 "Surrey": 4, "Flintshire": 50, "Denbighshire": 48,
+                 "Caernarfonshire": 40,
+                 "Fife": 5, "Lanarkshire": 2, "Ayrshire": 1, "Dunbartonshire": 1,
+                 "Renfrewshire": 0}),
+    # tight cluster either side of the Severn Estuary
+    "daps": mk(1, None,
+               {"Monmouthshire": 50, "Glamorgan": 50, "Gloucestershire": 40,
+                "Somerset": 40, "Wiltshire": 20, "Dorset": 15, "Devon": 12,
+                "Herefordshire": 12, "Brecknockshire": 25, "Carmarthenshire": 30,
+                "Pembrokeshire": 22, "Cardiganshire": 15}),
+    # strongest on the Clyde but also right across the Borders and Galloway --
+    # much wider than the article's Clyde-only framing implied
+    "sandshoes": mk(2, [(YG_BORDERS, 42), (YG_DANDG, 34), (YG_HIGHLAND, 28),
+                        (YG_TAYSIDE, 19), (YG_CENTRAL, 13), (YG_LOTHIAN, 11),
+                        (YG_GRAMPIAN, 7)],
+                    {"Renfrewshire": 52, "Ayrshire": 37, "Dunbartonshire": 35,
+                     "Lanarkshire": 23, "Fife": 22}),
+    "gymshoes": mk(3, [(YG_GRAMPIAN, 39), (YG_TAYSIDE, 29), (YG_DANDG, 24),
+                       (YG_HIGHLAND, 23), (YG_LOTHIAN, 22), (YG_CENTRAL, 18),
+                       (YG_BORDERS, 7)],
+                   {"Renfrewshire": 24, "Fife": 24, "Ayrshire": 22,
+                    "Dunbartonshire": 19, "Lanarkshire": 13,
+                    "Brecknockshire": 20, "Radnorshire": 20, "Montgomeryshire": 20}),
+    # genuinely narrow: Lanarkshire and Central Scotland, not the whole Clyde
+    "gutties": mk(1, [(YG_DANDG, 15), (YG_CENTRAL, 32), (YG_BORDERS, 3),
+                      (YG_LOTHIAN, 3), (YG_TAYSIDE, 2), (YG_HIGHLAND, 2),
+                      (YG_GRAMPIAN, 1)],
+                  {"Lanarkshire": 38, "Ayrshire": 12, "Renfrewshire": 8,
+                   "Dunbartonshire": 4, "Fife": 3}),
+    # the most geographically specific term in the survey: Lothian 18%, and
+    # essentially nowhere else in Britain
+    "rubbers": mk(0.5, [(YG_LOTHIAN, 18), (YG_BORDERS, 4)],
+                  {"Lanarkshire": 1}),
+}
+
+grids_all = {"footstrut": grid_json(q1), "tvd": grid_json(decoded_surface("tvd", 0.05, 0.72)),
              "giveitme": grid_json(decoded_surface("giveitme", 0.12, 0.82)),
              "bookspook": grid_json(decoded_surface("bookspook", 0.10, 0.85)),
              "stirstare": grid_json(surface(NURSESQUARE)),
@@ -329,6 +406,12 @@ grids_all = {"q1": grid_json(q1), "tvd": grid_json(decoded_surface("tvd", 0.05, 
              # calibrated against the paper's own reported regional rates (NW 70%,
              # W Mids 61%, NE 26%, East 31%, Kent 26%) -> a true P(rhyme), no rescale
              "singerfinger": grid_json(decoded_pct_surface("singerfinger")),
+             "mother_mum": grid_json(decoded_pct_surface("mother_mum")),
+             "mother_mam": grid_json(decoded_pct_surface("mother_mam")),
+             "mother_mom": grid_json(decoded_pct_surface("mother_mom")),
+             "mother_mummy": grid_json(decoded_pct_surface("mother_mummy")),
+             "mother_maw": grid_json(decoded_pct_surface("mother_maw")),
+             "mother_mammy": grid_json(decoded_pct_surface("mother_mammy")),
              "skiveclass_bunk": grid_json(decoded_pct_surface("skiveclass_bunk")),
              "skiveclass_hookey": grid_json(decoded_pct_surface("skiveclass_hookey")),
              "skiveclass_skip": grid_json(decoded_pct_surface("skiveclass_skip")),
@@ -343,6 +426,21 @@ grids_all = {"q1": grid_json(q1), "tvd": grid_json(decoded_surface("tvd", 0.05, 
              # lolly ice: Liverpool/Merseyside + a North Wales coast cluster (Flintshire/
              # Denbighshire), which shares the Merseyside form; NOT Manchester.
              "lollyice": grid_json(point_blob([(50.7, 91.3, 88), (47.8, 95.0, 76)], 3.0))}
+# footwear: county rates, plus the Hull "sandshoes" island that a county-level
+# surface cannot express on its own (Yorkshire is one county in this grid)
+for term, vm in FOOTWEAR.items():
+    surf = surface(vm)
+    # Glasgow and Lanarkshire are ONE county here but YouGov separates them, and
+    # they disagree sharply: sandshoes 47 vs 23, gutties 6 vs 38. Hull is the same
+    # problem inside Yorkshire. Stamp the city values on top of the county surface.
+    if term == "sandshoes":
+        surf = np.maximum(surf, point_blob([(73.0, 86.0, 48), (39.8, 54.6, 47)], 2.3))
+    elif term == "gutties":      # Glasgow is a hole in the Lanarkshire gutties zone
+        surf = np.clip(surf - point_blob([(39.8, 54.6, 20)], 2.0), 0.0, 1.0)
+    elif term == "rubbers":      # smoothing washes out Lothian, its only stronghold
+        surf = np.maximum(surf, point_blob([(49.0, 53.3, 18)], 2.2))
+    grids_all["shoe_" + term] = grid_json(surf)
+
 for term, vm in BREAD.items():
     grids_all[term] = grid_json(surface(vm))
 
@@ -383,6 +481,8 @@ def negative_union(terms):
 
 grids_all["none_splinter"] = negative_union(["splinter", "spelk", "spell", "shiver", "sliver"])
 grids_all["none_bread"] = negative_union(list(BREAD.keys()))
+grids_all["none_shoe"] = negative_union(["shoe_" + t for t in FOOTWEAR])
+grids_all["none_mother"] = negative_union(["mother_" + t for t in ["mum","mam","mom","mummy","maw","mammy"]])
 grids_all["none_tag"] = negative_union(["tag_" + t for t in TAG_TERMS])
 grids_all["none_skiveclass"] = negative_union(["skiveclass_" + t for t in ["bunk", "hookey", "skip", "skive", "wag"]])
 
@@ -405,7 +505,8 @@ PLACES = [
     ("Margate", "Kent", 86, 122),
     ("Bristol", "the West Country", 54, 120), ("Exeter", "the West Country", 46, 131),
     ("Edinburgh", "Scotland", 49, 53), ("Glasgow", "Scotland", 40, 55),
-    ("Aberdeen", "", 58, 35), ("Cardiff", "Wales", 49, 120),
+    ("Aberdeen", "", 58, 35), ("Cardiff", "Wales", 49, 119),
+    ("Swansea", "South Wales", 41, 118),
 ]
 places = [{"name": n, "tag": t, "col": co, "row": ro} for n, t, co, ro in PLACES]
 
@@ -455,8 +556,10 @@ DIALECT = [
     ("East Midlands", ["Derbyshire", "Leicestershire", "Nottinghamshire", "Rutland", "Lincolnshire"],
      (232, 112, 40)),
     ("South-East Midlands", ["Northamptonshire", "Bedfordshire", "Buckinghamshire"], (233, 126, 63)),
+    # deep gold, not the source map's pale yellow: on the cream page that only
+    # reached ~1.2:1 contrast and read as a blank gap in the map
     ("East Anglia", ["Cambridgeshire", "Huntingdonshire", "Norfolk", "Suffolk", "Essex"],
-     (240, 219, 92)),
+     (210, 172, 28)),
     ("South East", ["Surrey", "Hampshire", "Berkshire", "Oxfordshire", "Hertfordshire"], (56, 0, 0)),
     ("Sussex", ["Sussex"], (96, 1, 0)),
     ("Kentish", ["Kent"], (115, 1, 1)),
@@ -726,12 +829,24 @@ html = """<!DOCTYPE html>
   #out{position:relative;display:inline-block;}
   canvas{display:block;cursor:pointer;max-height:52vh;max-width:86vw;width:auto;height:auto;border-radius:6px;}
   #rprompt{color:var(--faint);font-size:14px;padding:60px 44px;border:2px dashed var(--line);border-radius:14px;}
-  #match{font-size:16px;margin-top:8px;min-height:1.3em;font-weight:600;} #match b{color:var(--accent);}
-  #legend{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);justify-content:center;margin-top:6px;}
-  #legend .bar{width:150px;height:12px;border-radius:3px;
+  .srcwrap{position:relative;display:inline-block;margin-top:18px;}
+  .srcbtn{font-size:12px;color:var(--teal);cursor:help;}
+  .srcbtn:hover{text-decoration:underline;}
+  .srcpop{display:none;position:absolute;bottom:135%%;left:0;width:320px;max-width:82vw;
+       font-size:12px;line-height:1.5;color:var(--body);text-align:left;background:var(--card);
+       border:1px solid var(--line);border-radius:10px;padding:11px 13px;z-index:40;
+       box-shadow:0 8px 24px rgba(0,0,0,.16);}
+  .srcpop ul{list-style:none;margin:7px 0 0;padding:0;}
+  .srcpop li{margin-bottom:4px;color:var(--muted);}
+  .srcwrap:hover .srcpop,.srcwrap.open .srcpop{display:block;}
+  #match{font-size:16px;margin-top:10px;min-height:1.3em;font-weight:600;line-height:1.35;} #match b{color:var(--accent);}
+  #mapfoot{display:flex;align-items:center;justify-content:center;gap:8px 16px;
+       flex-wrap:wrap;margin-top:10px;}
+  #legend{display:flex;align-items:center;gap:7px;font-size:11px;color:var(--muted);margin:0;}
+  #legend .bar{width:104px;height:7px;border-radius:99px;
        background:linear-gradient(to right,rgb(18,86,222),rgb(232,232,236),rgb(214,16,32));border:1px solid var(--line);}
-  #infowrap{position:relative;display:inline-block;margin-top:6px;}
-  #infobtn{font-size:13px;color:var(--teal);cursor:help;} #infobtn:hover{text-decoration:underline;}
+  #infowrap{position:relative;display:inline-block;margin:0;}
+  #infobtn{font-size:11.5px;color:var(--teal);cursor:help;} #infobtn:hover{text-decoration:underline;}
   #info{display:none;position:absolute;bottom:150%%;left:50%%;transform:translateX(-50%%);width:340px;max-width:82vw;
         font-size:12.5px;line-height:1.5;color:var(--body);text-align:left;background:var(--card);border:1px solid var(--line);
         border-radius:10px;padding:11px 13px;box-shadow:0 8px 24px rgba(0,0,0,.16);z-index:40;}
@@ -770,7 +885,19 @@ html = """<!DOCTYPE html>
        transition:opacity .3s ease;}
   .intro-hint.dim{opacity:.28;}
   .intro-lead{font-size:25px;line-height:1.4;font-weight:700;letter-spacing:-.01em;margin:0 0 16px;}
-  .intro-body{font-size:15.5px;line-height:1.65;color:var(--body);margin:0 0 26px;}
+  .intro-body{font-size:15.5px;line-height:1.65;color:var(--body);margin:0 0 18px;}
+  .intro-kicker{font-size:11px;letter-spacing:.09em;text-transform:uppercase;font-weight:750;
+       color:var(--muted);margin:0 0 9px;padding-top:15px;border-top:1px solid var(--line);}
+  .intro-why{font-size:13.5px;line-height:1.55;color:var(--body);margin:0 0 13px;}
+  .intro-points{list-style:none;margin:0 0 24px;padding:0;}
+  .intro-points li{position:relative;padding-left:16px;font-size:13.5px;line-height:1.5;
+       color:var(--body);margin-bottom:8px;}
+  .intro-points li:last-child{margin-bottom:0;}
+  .intro-points li::before{content:"";position:absolute;left:0;top:8px;width:5px;height:5px;
+       border-radius:50%%;background:var(--accent);opacity:.55;}
+  .intro-points b{color:var(--ink);font-weight:680;}
+  .authorlink{color:var(--teal);text-decoration:underline;text-underline-offset:2px;}
+  .authorlink:hover{color:var(--accent);}
   #startbtn{font-size:16px;font-weight:650;color:#fff;background:var(--accent);border:none;border-radius:12px;
        padding:15px 36px;cursor:pointer;transition:all .14s;box-shadow:0 6px 18px rgba(192,20,31,.24);}
   #startbtn:hover:not(:disabled){background:var(--accent-h);transform:translateY(-2px);box-shadow:0 9px 22px rgba(192,20,31,.30);}
@@ -822,6 +949,11 @@ html = """<!DOCTYPE html>
   @media (max-width:640px){
     #app{padding:16px 14px 14px;}
     #left{flex:1 1 auto;max-width:100%%;width:100%%;}
+    /* relocated by applyLayout(): image sits in the question column, buttons below the map */
+    #stage>#next,#stage>.navbtns{width:100%%;}
+    #stage>#next{margin-top:18px;}
+    #stage>.navbtns{justify-content:center;margin-top:10px;}
+    #left>#qimg{margin:4px auto 16px;}
     #right{max-width:100%%;}
     .intro-right{max-width:100%%;}
     /* icon-only restart button on phones so it never covers the title */
@@ -847,7 +979,7 @@ html = """<!DOCTYPE html>
   <div id="intro">
     <div class="intro-head">
       <div class="intro-title">The Great British Dialect Quiz</div>
-      <div class="intro-sub">Answer a few questions, see where each answer places you on the map.</div>
+      <div class="intro-sub">Answer a few questions &mdash; see where each answer places you on the map.</div>
     </div>
     <div class="intro-panels">
     <div class="intro-left">
@@ -857,10 +989,21 @@ html = """<!DOCTYPE html>
     </div>
     <div class="intro-right">
       <p class="intro-lead">How you say a few everyday words, and what you call bread, your evening meal, or a splinter, quietly gives away where in Britain you&rsquo;re from.</p>
-      <p class="intro-body">This short quiz asks how <i>you</i> speak. After each answer a heat map lights up, showing where in Great Britain that feature is common, all drawn from published dialect research. Work through them and see which corner of the map your speech belongs to.</p>
-      <label class="consent"><input type="checkbox" id="consent"><span>I agree to the <span class="tlink" id="termsbtn">terms of data collection<span class="terms-pop" id="termspop">By ticking this box, you consent to the collection and storage of your quiz answers and, if you provide it, your hometown. This information is stored <b>anonymously</b>: no name, email address, or IP address is recorded, and it cannot be traced back to you. It is used solely to study regional language variation and to improve future versions of the quiz. Participation is voluntary, and you may request deletion of your data at any time by contacting the Intellectual Forum at Jesus College, Cambridge. Your data will not be sold or shared with third parties.</span></span></span></label>
+      <p class="intro-body">This short quiz asks how <i>you</i> speak, then places your accent on the map.</p>
+      <p class="intro-kicker">An educational resource</p>
+      <p class="intro-why">Most dialect quizzes hand you a verdict at the end. Here the map is the point &mdash;
+        interactive, sourced, and improving as more people play.</p>
+      <ul class="intro-points">
+        <li><b>Interactive, not illustrative.</b> Hover any city on any map to see the word it actually uses, and how
+          common it is there.</li>
+        <li><b>It shows its working.</b> Every map is redrawn from published dialect
+          research, and each question explains the feature behind it.</li>
+        <li><b>It improves as people play.</b> With consent, answers feed back into the maps &mdash; a living survey
+          rather than a fixed one.</li>
+      </ul>
+      <label class="consent"><input type="checkbox" id="consent"><span>I agree to the <span class="tlink" id="termsbtn">terms of data collection<span class="terms-pop" id="termspop">By ticking this box, you consent to the collection and storage of your quiz answers and, if you provide it, your hometown. This information is stored <b>anonymously</b>: no name, email address, or IP address is recorded, and it cannot be traced back to you. It is used solely to study regional language variation and to improve future versions of the quiz. Your data will not be sold or shared with third parties.</span></span></span></label>
       <button id="startbtn">Start the quiz &rarr;</button>
-      <p class="intro-note"><span class="aboutwrap"><span class="aboutbtn">&#9432;</span><span class="aboutinfo">This is a pixel-art version of the British dialect map. It was made by <b>Alan Levita</b> during a research internship at the Intellectual Forum, drawing on the research of <b>Prof. Bert Vaux</b> of King&rsquo;s College, Cambridge. Bert&rsquo;s work formed the basis for the original <i>New York Times</i> dialect quiz.<br><br>Your answers are used to estimate roughly where you&rsquo;re from. All the maps were redrawn by hand in a pixel-art style, based on isoglosses from published research on British dialects.</span></span> Powered by the Intellectual Forum at Jesus College, Cambridge</p>
+      <p class="intro-note"><span class="aboutwrap"><span class="aboutbtn">&#9432;</span><span class="aboutinfo">This is a pixel-art version of the British dialect map, made by <b id="authorname">Alan Levita</b> during a research internship at the Intellectual Forum.<br><br>Your answers are used to estimate roughly where you&rsquo;re from. All the maps were redrawn by hand in a pixel-art style, based on isoglosses from published dialect research and large-scale surveys.</span></span> Powered by the Intellectual Forum at Jesus College, Cambridge</p>
     </div>
     </div>
   </div>
@@ -883,8 +1026,10 @@ html = """<!DOCTYPE html>
       <div id="out"><div id="rprompt">your map will appear here</div><canvas id="cv" style="display:none"></canvas>
         <div class="tip" id="tip"></div></div>
       <div id="match"></div>
-      <div id="legend" style="display:none"><span>uncommon</span><span class="bar"></span><span>common</span></div>
-      <div id="infowrap" style="display:none"><span id="infobtn"></span><div id="info"></div></div>
+      <div id="mapfoot">
+        <div id="legend" style="display:none"><span>uncommon</span><span class="bar"></span><span>common</span></div>
+        <div id="infowrap" style="display:none"><span id="infobtn"></span><div id="info"></div></div>
+      </div>
       <div id="detail"></div>
     </div>
   </div>
@@ -910,6 +1055,32 @@ const QUESTIONS=[
   // first question: where did you grow up? (a GB town type-ahead, or "not from GB").
   // Not a heat-map question — collected (with consent) for future training, not scored.
   {id:"hometown",text:"Where in Great Britain did you grow up?",hometownq:true},
+  {id:"mother",text:"Growing up, what did you call your mother?",
+   tag:"real data (Starkey Comics dialect survey)",real:true,phon:false,multi:true,metric:"prevalence",
+   info:"mother",infoLabel:"words for &lsquo;mother&rsquo;",
+   opts:[
+     {label:"Mum",v:"mum",term:"mum",grid:"mother_mum"},
+     {label:"Mam",v:"mam",term:"mam",grid:"mother_mam"},
+     {label:"Mom",v:"mom",term:"mom",grid:"mother_mom"},
+     {label:"Mummy",v:"mummy",term:"mummy",grid:"mother_mummy"},
+     {label:"Maw",v:"maw",term:"maw",grid:"mother_maw"},
+     {label:"Mammy",v:"mammy",term:"mammy",grid:"mother_mammy"},
+     {label:"Something else",v:"none",term:"another word",grid:"none_mother",excl:true,none:true}
+   ]},
+  {id:"shoes",text:"What did you call the soft canvas shoes you wore for PE at primary school?",
+   tag:"real data (YouGov, 2025 &mdash; ~38,000 respondents)",real:true,phon:false,multi:true,metric:"prevalence",
+   info:"shoes",infoLabel:"names for PE plimsolls",
+   opts:[
+     {label:"Plimsolls",v:"plimsolls",term:"plimsolls",grid:"shoe_plimsolls"},
+     {label:"Pumps",v:"pumps",term:"pumps",grid:"shoe_pumps"},
+     {label:"Daps / dappers",v:"daps",term:"daps",grid:"shoe_daps"},
+     {label:"Sandshoes / sannies",v:"sandshoes",term:"sandshoes",grid:"shoe_sandshoes"},
+     {label:"Gym shoes",v:"gymshoes",term:"gym shoes",grid:"shoe_gymshoes"},
+     {label:"Gutties",v:"gutties",term:"gutties",grid:"shoe_gutties"},
+     {label:"Rubbers",v:"rubbers",term:"rubbers",grid:"shoe_rubbers"},
+     {label:"Trainers",v:"trainers",term:"trainers",none:true},
+     {label:"I don&rsquo;t have a word for this",v:"none",term:"no word for this",grid:"none_shoe",excl:true,none:true}
+   ]},
   {id:"singerfinger",text:"Do the words <i>singer</i> and <i>finger</i> rhyme for you?",
    tag:"real data",real:true,metric:"pct",grid:"singerfinger",
    info:"singerfinger",infoLabel:"velar nasal plus",
@@ -934,7 +1105,7 @@ const QUESTIONS=[
    tag:"real data",real:true,metric:"pct",grid:"youse",
    info:"youse",infoLabel:"plural &lsquo;yous(e)&rsquo;",
    opts:[{label:"Yes",v:1,word:"say yous(e)"},{label:"No",v:0,word:"don&rsquo;t say yous(e)"}]},
-  {id:"tag",text:"This children&rsquo;s chasing game is called &#95;&#95;&#95;&#95;",tag:"real data (Starkey Comics dialect survey)",real:true,phon:false,multi:true,metric:"prevalence",
+  {id:"tag",text:"What do you call the playground game where one person chases the others?",tag:"real data (Starkey Comics dialect survey)",real:true,phon:false,multi:true,metric:"prevalence",
    info:"tag",infoLabel:"names for the chasing game",
    opts:[
      {label:"Tag",v:"tag",term:"tag",grid:"tag_tag"},
@@ -947,7 +1118,7 @@ const QUESTIONS=[
      {label:"Hit",v:"hit",term:"hit",grid:"tag_hit"},
      {label:"Had",v:"had",term:"had",grid:"tag_had"},
      {label:"Touch",v:"touch",term:"touch",grid:"tag_touch"},
-     {label:"Dobby",v:"dobby",term:"dobby",grid:"tag_dobby"},
+     {label:"Dob / dobby",v:"dobby",term:"dob",grid:"tag_dobby"},
      {label:"I don&rsquo;t have a word for this",v:"none",term:"no word for this",grid:"none_tag",excl:true,none:true}
    ]},
   {id:"scone",text:"Does <i>scone</i> rhyme with <i>gone</i> or <i>bone</i>?",tag:"real data",real:true,metric:"pct",
@@ -1015,7 +1186,7 @@ const QUESTIONS=[
    opts:[{label:"Yes, they rhyme",v:1,word:"rhyme book/spook"},{label:"No, they sound different",v:0,word:"don&rsquo;t rhyme"}]},
   // metric "pct": a clean binary the paper reports as proportions -> show a percent.
   // ipa:true enables the click-a-city foot-strut IPA readout (foot-strut only).
-  {id:"q1",text:"Do <i>foot</i> and <i>cut</i> rhyme for you?",tag:"real data",real:true,metric:"pct",
+  {id:"footstrut",text:"Do <i>foot</i> and <i>cut</i> rhyme for you?",tag:"real data",real:true,metric:"pct",
    ipa:true,info:"footstrut",infoLabel:"the foot&ndash;strut split",
    opts:[{label:"Yes, they rhyme",v:1,word:"rhyme"},{label:"No, they sound different",v:0,word:"split"}]}
 ];
@@ -1040,6 +1211,8 @@ const ETYM={
   northforce:"<b>The NORTH&ndash;FORCE merger</b> &mdash; whether <i>horse</i> and <i>hoarse</i> (or <i>for</i> and <i>four</i>, <i>war</i> and <i>wore</i>) sound identical. Most of England and Wales merged them long ago, so they rhyme; <b>Scotland</b> keeps them clearly distinct, as do pockets around <b>Manchester</b> and Merseyside.",
   forcecure:"<b>The CURE&ndash;FORCE merger</b> &mdash; whether <i>poor</i> and <i>pour</i> (or <i>sure</i> and <i>shore</i>, <i>tour</i> and <i>tore</i>) sound identical. Across most of England they have merged, so they rhyme; the older distinct <i>poor</i>/<i>sure</i> vowel /&#650;&#601;/ survives in <b>Scotland</b>, the <b>North East</b>, and <b>West Yorkshire</b>.",
   youse:"<b>Plural &lsquo;yous(e)&rsquo;</b> &mdash; a second-person plural pronoun, filling the gap English left when <i>thou/you</i> collapsed to just <i>you</i>. Strongest in <b>Scotland</b> and the <b>North East</b> (Newcastle, Sunderland, Middlesbrough), fading through the Midlands, and rare in southern England, where <i>you guys</i> or plain <i>you</i> is used instead.",
+  mother:"<b>Words for &lsquo;mother&rsquo;</b> &mdash; <b>mum</b> is the general term across most of England and Scotland. <b>Mam</b> is the Welsh and Irish word, and is standard in <b>Wales</b>, the <b>North East</b> and <b>Cumbria</b>. <b>Mom</b> is almost entirely a <b>West Midlands</b> form, centred on Birmingham and reaching west as far as Telford &mdash; it is not an Americanism there but a long-standing local usage. <b>Maw</b> is a Scots clipping heard across the Central Belt, and <b>mummy</b> survives in adults mainly in south-east England. <b>Mammy</b> is overwhelmingly Irish, but has a real foothold in <b>south-west Wales</b> around Swansea and Carmarthenshire.",
+  shoes:"<b>Names for PE plimsolls</b> &mdash; the black canvas shoes worn for primary-school PE, and one of the most sharply regional words in Britain. <b>Plimsolls</b> is the southern and eastern norm (91%% in Norfolk), but flips to <b>pumps</b> across the North West and West Midlands (72&ndash;75%% in Cheshire, Lancashire, Merseyside and Staffordshire). <b>Daps</b> clusters either side of the Severn Estuary &mdash; South Wales and the Bristol area. Scotland splits several ways: <b>sandshoes</b> or <b>sannies</b> around the Clyde, <b>gutties</b> in Lanarkshire, <b>gym shoes</b> in the North East, and <b>rubbers</b> almost only in the Lothians. There is also a striking island of <i>sandshoes</i> around Hull.",
   singerfinger:"<b>Velar nasal plus</b> (also called <i>ng</i>-coalescence) &mdash; whether a hard [&#609;] survives after the <i>ng</i>, so <i>singer</i> is [s&#618;&#331;&#609;&#601;] and rhymes with <i>finger</i>. English generally dropped that [&#609;] around the 17th century, but the change never took hold across the <b>North West</b> and <b>West Midlands</b>: Manchester, Liverpool, Stoke, Birmingham and Cheshire keep it, as does north-east Wales (Flintshire, Wrexham). Elsewhere &mdash; the North East, East Anglia, the South &mdash; the two words are distinct.",
   thfronting:"<b>TH-fronting</b> &mdash; replacing the &lsquo;th&rsquo; sounds /&#952;/ and /&#240;/ with /f/ and /v/, so <i>think</i> &rarr; <i>fink</i> and <i>brother</i> &rarr; <i>bruvver</i>. Once a London (Cockney) feature, it has spread rapidly since the late 20th century and is now common across much of urban England, especially among younger speakers &mdash; while remaining rare in Scotland, Wales, and rural areas generally.",
   skiveclass:"<b>Words for skipping school</b> without permission, from the BBC Voices survey. <b>Skive</b> is the general British term, strongest in Scotland and the South West; <b>bunk off</b> is a London/South East form; <b>wag</b> belongs to the North West and North East; <b>play hookey</b> is a chiefly North Eastern (Tyneside) usage; <b>skip</b> is used more loosely nationwide, without a single clear home region.",
@@ -1051,8 +1224,22 @@ const ETYM={
   tag:"<b>Names for tag/it</b> &mdash; <i>tig</i> covers most of England, Scotland &amp; Wales; <i>it</i> is the South East&rsquo;s word instead of <i>tig</i>. Distinct local pockets survive within that: <i>tiggy</i> and <i>tuggy</i> side by side around Durham &amp; North Yorkshire, <i>tick</i> and a tiny <i>tip</i> pocket in North Wales, <i>touch</i> around Birmingham and in the South West, <i>had</i> on the Suffolk/Essex coast, <i>hit</i> on the South Devon coast, and <i>dobby</i> &mdash; a well-known Nottinghamshire/South Yorkshire term &mdash; in a tight pocket around Sheffield."
 };
 // only etymology sources are cited (the maps are our own recreations, not originals)
-const ETYM_SRC="Wiktionary";
-const SRC={ splinter:"Wiktionary", tag:"Starkey Comics" };
+// Shown as "Source: ..." at the foot of each info bubble. Deliberately left
+// empty for questions whose provenance I could not verify -- an unattributed
+// bubble is better than a citation that might be wrong.
+// Every source in one place, shown on the results screen rather than repeated in
+// each info bubble. Only sources I can actually stand behind are named; the rest
+// of the maps are covered by the general line.
+// One consolidated credit list behind an (i) on the results screen. Names only:
+// pairing each source to a specific question implied the other fifteen were
+// unsourced, which is not what a partial list means.
+const SOURCES=[
+  "YouGov, August 2025 (n&asymp;38,000)",
+  "BBC Voices, via Grieve et al. (2019)",
+  "Starkey Comics dialect surveys",
+  "MacKenzie, Bailey &amp; Turton (2022), <i>Journal of Linguistic Geography</i>",
+  "Survey of English Dialects (Orton et al., 1978)"
+];
 // lexical prevalence: a relative band, no misleading headcount
 function band(v){return v>=0.5?"the main word(s) here":v>=0.3?"common here":v>=0.15?"one of several here":"rarely used here";}
 // for the "no word" negative map: high v = the words are absent here
@@ -1098,6 +1285,7 @@ function render(){
         next=document.getElementById("next"),hint=document.getElementById("hint");
   // progress bar tracks the CURRENT question (idx), so it stays in sync with
   // "Question N of M" and moves with Back/Continue
+  applyLayout();
   const atEnd=idx>=QUESTIONS.length;
   // hometown is a pre-question: the bar only starts moving with the real questions
   document.getElementById("pbar").style.width=(atEnd?100:idx/(QUESTIONS.length-1)*100)+"%%";
@@ -1120,6 +1308,7 @@ function render(){
       const runners=scored.filter(s=>s.p!==cs.place && s.v>=0.7*scored[0].v).slice(0,2).map(s=>s.p.name);
       const least=scored.length?scored[scored.length-1].p:null;   // bottom of the same ranking = the blue end of the map
       const ms=matchScore(cs.place);
+      submitResponses(top, ms);      // fires once, only with consent and an endpoint set
       done.innerHTML="<div style='font-size:13px;color:#8a857c;letter-spacing:.04em;text-transform:uppercase;margin-bottom:8px'>Based on your "+cs.count+" answers</div>"+
         "<div style='font-size:15px;color:#555;margin-bottom:2px'>You sound most like</div>"+
         "<div style='font-size:30px;font-weight:750;line-height:1.15;color:var(--accent)'>"+top+"</div>"+
@@ -1130,7 +1319,10 @@ function render(){
             "<div style='font-size:12.5px;color:#8a857c;margin-top:6px'>"+matchLabel(ms)+"</div>"+
           "</div>":"")+
         (runners.length?"<div style='font-size:13px;color:#8a857c;margin-top:14px'>Also close: "+runners.join(", ")+"</div>":"")+
-        (least?"<div style='font-size:13px;color:var(--muted);margin-top:6px'>Least like: <b style='color:"+rgbOf(THEME.blue)+";font-weight:650'>"+placeName(least)+"</b></div>":"");
+        (least?"<div style='font-size:13px;color:var(--muted);margin-top:6px'>Least like: <b style='color:"+rgbOf(THEME.blue)+";font-weight:650'>"+placeName(least)+"</b></div>":"")+
+        "<div class='srcwrap'><span class='srcbtn' id='srcbtn'>&#9432; sources</span>"+
+          "<span class='srcpop'>Maps are redrawn from published dialect research and large-scale surveys, including:"+
+          "<ul>"+SOURCES.map(x=>"<li>"+x+"</li>").join("")+"</ul></span></div>";
     }
     return;
   }
@@ -1367,7 +1559,12 @@ function drawStar(x,y,r,fill,strokeW){
 }
 function drawMap(q,ans){
   document.getElementById("right").style.display="";   // map revealed -> show the right panel
-  document.getElementById("qimg").style.display="none";  // hide the photo once the map appears
+  // On desktop the photo and the map share the right column, so revealing the map
+  // has to hide the photo. On a phone they are in different places (photo sits up
+  // with the question), so it should stay visible.
+  {const _im=document.getElementById("qimg");
+   if(MQ_NARROW.matches && q.img){ if(!_im.getAttribute("src")) _im.src=q.img; _im.style.display="block"; }
+   else _im.style.display="none";}
   document.getElementById("rprompt").style.display="none";cv.style.display="block";
   document.getElementById("legend").style.display="flex";
   const multi=Array.isArray(ans);
@@ -1442,10 +1639,20 @@ function drawMap(q,ans){
   // (foot-cut, book-spook, trap-bath, north-force, force-cure, tea/dinner, give-it-me) never
   // star; that leaves the lexical words + the Scouse nurse-square merger, gated on peakedness.
   const starAllowed = (q.metric!=="pct" && !isSlider) || q.id==="stirstare";
-  const localised = starAllowed && topV>0.18 && meanV>0 && (topV/meanV)>=2.4;
+  // one threshold, used by BOTH the "is this localised?" gate and the per-place
+  // filter. They used to be 0.18 and 0.20, so a surface peaking between the two
+  // passed the gate and then had every candidate rejected, silently degrading to
+  // the vague "several regions" text (this is what hid mummy -> London).
+  const STAR_MIN=0.18;
+  // A term can be rare nationally and still unmistakably belong somewhere:
+  // "rubbers" is only 18%% even in the Lothians, but 18x the national mean and
+  // near-absent elsewhere. Judging that on absolute level alone hid it, so a
+  // sufficiently concentrated answer qualifies at a lower floor.
+  const FLOOR = (meanV>0 && topV/meanV>=6) ? 0.08 : STAR_MIN;
+  const localised = starAllowed && topV>FLOOR && meanV>0 && (topV/meanV)>=2.4;
   const starPlaces=[];
   if(localised) for(const s of scored){ if(starPlaces.length>=3)break;
-    if(s.v<0.8*topV||s.v<=0.2)continue;
+    if(s.v<0.8*topV||s.v<FLOOR)continue;
     if(starPlaces.some(p=>Math.hypot(p.col-s.p.col,p.row-s.p.row)<9))continue;
     starPlaces.push(s.p);}
   SHOWN.shownPlaces=starPlaces;   // so the stars are hoverable too
@@ -1474,8 +1681,7 @@ function drawMap(q,ans){
   if(noResult || !scored.length){
     matchHTML="<span style='color:#8a857c;font-weight:500'>Inconclusive &mdash; this doesn&rsquo;t point to a particular place.</span>";
   } else if(starPlaces.length){
-    matchHTML="&#9733; <b>"+starPlaces.map(placeName).join(" &amp; ")+"</b>"+
-      "<div style='font-size:11px;color:#8a857c;margin-top:2px;font-weight:400'>the &#9733; marks where this answer stands out</div>";
+    matchHTML="&#9733; <b>"+starPlaces.map(placeName).join(" &amp; ")+"</b>";
   } else {
     // broad answers: describe the REGION (e.g. "the North of England"), or "much of Britain"
     const rn=matchRegion(surf);
@@ -1485,13 +1691,13 @@ function drawMap(q,ans){
   }
   document.getElementById("match").innerHTML=matchHTML;
   // (i) more info — resolved per question so it's never "undefined"
-  let infoHTML="", infoLabel="", infoSrc="";
-  if(q.info){ infoHTML=ETYM[q.info]||""; infoLabel=q.infoLabel||""; infoSrc=SRC[q.info]||""; }
+  let infoHTML="", infoLabel="";
+  if(q.info){ infoHTML=ETYM[q.info]||""; infoLabel=q.infoLabel||""; }
   else if(q.multi){ const parts=sel.map(o=>ETYM[o.grid]).filter(Boolean);
-    infoHTML=parts.join("<hr class='isep'>"); infoLabel="your word"+(sel.length>1?"s":""); infoSrc=ETYM_SRC; }
+    infoHTML=parts.join("<hr class='isep'>"); infoLabel="your word"+(sel.length>1?"s":""); }
   const infowrap=document.getElementById("infowrap"), infobtn=document.getElementById("infobtn"), info=document.getElementById("info");
   if(infoHTML){ infowrap.style.display="inline-block"; infobtn.innerHTML="&#9432; about "+infoLabel;
-    info.innerHTML=infoHTML+(infoSrc?"<div class='src'>Source: "+infoSrc+"</div>":"");   // shows on hover via CSS
+    info.innerHTML=infoHTML;   // sources are listed once, on the results screen
   } else { infowrap.style.display="none"; }
   document.getElementById("detail").innerHTML=q.ipa?
     "Click a city to see the expected local IPA for <i>foot</i> vs <i>cut</i>":"";
@@ -1625,12 +1831,36 @@ cv.addEventListener("click",(e)=>{
   const rect=cv.getBoundingClientRect(),sx=cv.width/rect.width,sy=cv.height/rect.height;
   const x=(e.clientX-rect.left)*sx,y=(e.clientY-rect.top)*sy;
   let best=null,bd=1e9;for(const ct of [...cities,...(SHOWN.shownPlaces||[])]){const dd=Math.hypot((ct.col+0.5)*CELL-x,(ct.row+0.5)*CELL-y);if(dd<bd){bd=dd;best=ct;}}
-  if(best&&bd<=26){const rhymes=(grids.q1[best.row|0][best.col|0]||0)>=0.5;
+  if(best&&bd<=26){const rhymes=(grids.footstrut[best.row|0][best.col|0]||0)>=0.5;
     const cut=rhymes?"k&#650;t":"k&#652;t";
     detail.innerHTML="<b>"+best.name+"</b> &mdash; "+
       (rhymes?"foot &amp; cut <b>rhyme</b> (both /&#650;/)":"foot &amp; cut are <b>distinct</b> (/&#650;/ vs /&#652;/)")+
       "<br><span class='ipa'>/f&#650;t/ &middot; /"+cut+"/</span>";}
 });
+
+// ---- mobile reading order ---------------------------------------------------
+// Stacked on a phone, the two columns put the photo AFTER the answers and let
+// you press Continue without ever seeing the map. On narrow screens the image
+// moves up between question and answers, and the buttons move below the map, so
+// the map always sits on the path to the next question.
+const MQ_NARROW = window.matchMedia("(max-width: 640px)");
+function applyLayout(){
+  const stage=document.getElementById("stage"), left=document.getElementById("left"),
+        right=document.getElementById("right"), img=document.getElementById("qimg"),
+        opts=document.getElementById("opts"), next=document.getElementById("next"),
+        nav=document.querySelector(".navbtns"), done=document.getElementById("leftdone");
+  if(!stage||!left||!right||!img||!next||!nav) return;
+  if(MQ_NARROW.matches){
+    if(img.parentNode!==left) left.insertBefore(img, opts);
+    if(next.parentNode!==stage) stage.appendChild(next);
+    if(nav.parentNode!==stage) stage.appendChild(nav);
+  } else {
+    if(img.parentNode!==right) right.insertBefore(img, right.firstChild);
+    if(next.parentNode!==left) left.insertBefore(next, done);
+    if(nav.parentNode!==left) left.appendChild(nav);
+  }
+}
+if(MQ_NARROW.addEventListener) MQ_NARROW.addEventListener("change", applyLayout);
 
 // ---- landing page hero map: smooth (not the quiz's chunky pixel style) ----
 // bumped on every drawMini() call so a re-render (e.g. theme flip) retires the
@@ -1767,10 +1997,46 @@ function leaveHometown(){
   hometown=(answers.hometown&&answers.hometown!=="notgb")?answers.hometown:"";
   if(consented && hometown){
     try{ localStorage.setItem("gbdq_hometown", hometown); }catch(e){}
-    // TODO(backend): with consent given, POST {hometown, answers, ts} to your endpoint here
-    // fetch("https://YOUR-ENDPOINT", {method:"POST", headers:{"Content-Type":"application/json"},
-    //   body:JSON.stringify({hometown, answers, ts:Date.now()})}).catch(()=>{});
   }
+}
+
+// ---- response collection ---------------------------------------------------
+// Paste a URL into COLLECT.endpoint to switch collection on; leave it empty and
+// nothing is ever sent. Submission happens ONCE, when the result screen is first
+// reached, so a stored response is always a complete run rather than a fragment.
+// Optional outbound links. Leave a value empty and it simply renders as plain
+// text -- no dead links on the page.
+const LINKS={ linkedin:"" };      // <-- paste your LinkedIn profile URL
+const COLLECT={
+  endpoint:"https://script.google.com/macros/s/AKfycbynutWpL2Z3-7nigKUseLYBgrzfEuANgxA7RapaKn_ME1e5pG-Vu5F_-SrM2UvHdair/exec",
+  version:"2026-08-07"      // bump when the question set changes, so responses stay comparable
+};
+// Random per page-load, NOT persisted: enough to drop an accidental double-submit
+// within one sitting, while never linking a visitor across visits.
+const RUN_ID=(function(){try{
+  const a=new Uint8Array(8); crypto.getRandomValues(a);
+  return Array.from(a,b=>b.toString(16).padStart(2,"0")).join("");
+}catch(e){return String(Date.now())+Math.random().toString(16).slice(2);}})();
+let _submitted=false;
+function submitResponses(placeLabel,score){
+  if(_submitted || !consented || !COLLECT.endpoint) return;
+  _submitted=true;
+  const out={};
+  for(const q of QUESTIONS){ if(q.hometownq)continue;
+    if(answers[q.id]!==undefined) out[q.id]=answers[q.id]; }
+  const payload={version:COLLECT.version, run:RUN_ID, ts:new Date().toISOString(),
+    hometown:answers.hometown||"", result:placeLabel||"", match:(score==null?"":score),
+    answers:out};
+  try{
+    const body=JSON.stringify(payload);
+    // text/plain dodges the CORS preflight that blocks application/json on
+    // Apps Script and similar simple endpoints; sendBeacon survives the tab
+    // being closed the moment the result appears.
+    const blob=new Blob([body],{type:"text/plain;charset=UTF-8"});
+    if(navigator.sendBeacon && navigator.sendBeacon(COLLECT.endpoint, blob)) return;
+    fetch(COLLECT.endpoint,{method:"POST",mode:"no-cors",keepalive:true,
+      headers:{"Content-Type":"text/plain;charset=UTF-8"},body:body}).catch(()=>{});
+  }catch(e){}
 }
 function startQuiz(){
   recordConsent();                                       // record agreement before the quiz
@@ -1840,7 +2106,17 @@ syncStart();
 // terms-of-data-collection link: tap to open its popup, without toggling the checkbox
 var _tb=document.getElementById("termsbtn");
 if(_tb)_tb.addEventListener("click",function(e){e.preventDefault();e.stopPropagation();this.classList.toggle("open");});
-document.addEventListener("click",function(){document.getElementById("infowrap").classList.remove("open");var aw=document.querySelector(".aboutwrap");if(aw)aw.classList.remove("open");if(_tb)_tb.classList.remove("open");});
+document.addEventListener("click",function(e){
+  const sb=e.target.closest&&e.target.closest(".srcbtn");
+  document.querySelectorAll(".srcwrap").forEach(w=>{
+    if(sb&&w.contains(sb)){e.stopPropagation();w.classList.toggle("open");} else w.classList.remove("open");});
+  if(sb)return;
+  document.getElementById("infowrap").classList.remove("open");var aw=document.querySelector(".aboutwrap");if(aw)aw.classList.remove("open");if(_tb)_tb.classList.remove("open");});
+// turn the author credit into a link only if one has been configured
+(function(){const a=document.getElementById("authorname");
+  if(a&&LINKS.linkedin){a.innerHTML='<a class="authorlink" href="'+LINKS.linkedin+
+    '" target="_blank" rel="noopener noreferrer">'+a.textContent+'</a>';}})();
+applyLayout();
 drawMini();
 showIntro();
 // landing is now interactive; parse the heavy heat-map data in the background so it's
