@@ -1,3 +1,6 @@
+# macOS
+.DS_Store
+
 # Local source assets & scratch files: kept on disk for reference and rebuilding,
 # but NOT published to the website (keeps the live site lean, and avoids putting
 # third-party research figures online). The quiz's own maps are generated into
