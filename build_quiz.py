@@ -527,6 +527,129 @@ ALLEY_BLOBS = {
     "cut":     [(63.0, 68.0, 56)],                     # Newcastle
 }
 
+# ---- knocking on a door and running away --------------------------------------
+# TWO sources, each used where it is strong.
+#
+# England and Wales come from Our Dialects (CC BY-SA 4.0), respondent-level:
+# 1,469 answers, counted rather than read off a picture. Nationally run family
+# 75.8%%, ginger family 17.9%%, cherry knocking 3.1%%, ding dong ditch 2.0%%,
+# nicky nicky nine doors 1.0%%, chicky melly 0.1%%.
+#
+# SCOTLAND comes from YouGov (12 Feb 2025, n>12,000), because Our Dialects has
+# seven Scottish respondents in the whole country -- not enough to draw, and
+# leaving it blank made a quarter of the map dead. YouGov found Scotland has its
+# own word entirely: "chap door run" 27%% and the clipped "chappie" 23%%, i.e.
+# half of Scots, plus "chicken mellie" at 7%% (which appears nowhere else in the
+# UK -- and which Our Dialects independently caught twice as "chicky melly").
+#
+# Where the two overlap they agree, which is the reason to trust the join: the
+# North East is 56%% "knocky nine doors" in YouGov against 60%% for the same word
+# in Our Dialects, and the South West is 13%% cherry knocking regionally against
+# a tight 68%% in the Gloucestershire cluster inside it. YouGov lists each name
+# separately where Our Dialects groups families, so its per-name shares are
+# systematically the lower of the two; the two scales are never mixed inside one
+# surface.
+#
+# EVERY name is its own answer in the quiz. Some of them necessarily SHARE a
+# surface, because the evidence for them is the same evidence:
+#   * knock a door run / knock and run / knock knock run -- Our Dialects, the only
+#     source with county-level geography, records them as one "run family"; YouGov
+#     separates the names (21/13/2 nationally) but places all of them in the same
+#     Midlands-Yorkshire-North West block, so there is no split to draw.
+#   * chap door run / chappie / chicken mellie -- all three are Scotland-wide in
+#     YouGov and it publishes no sub-Scottish breakdown.
+#   * bobby knocking / rat a tat ginger -- both 11%% of Wales, both Wales-only.
+# The map panel dedupes by grid, so a shared surface draws once. Splitting these
+# further would mean inventing the difference.
+#
+# YouGov national shares (Feb 2025): knock down ginger 25, knock a door run 21,
+# knock and run 13, ding dong ditch 6, knock knock ginger 4, knocking nine doors 3,
+# chap door run 3, cherry knocking 3, knock knock run 2, chappie 2, others 18.
+#
+# Thresholds, so a handful of people don't paint a region:
+#   * counties with n >= 12 carry their measured rate;
+#   * counties with n < 12 are left at the base rate and filled by smoothing --
+#     EXCEPT where one variant is an outright majority and agrees with the
+#     measured counties next door (Sussex 75%% ginger n=8, between Kent 84%% and
+#     Surrey 89%%; Devon 62%% n=8, between Somerset 64%% and Wiltshire 92%%;
+#     Bedfordshire 57%% n=7, between Hertfordshire 84%% and Buckinghamshire 50%%).
+#     Without those three the South West and the Chilterns read as false holes.
+#   * chicky melly is dropped entirely: n=2 nationally, and both respondents are
+#     outside the Wearside area the word actually belongs to. Two people is not
+#     a map.
+#   * ding dong ditch is an option in the quiz but has NO surface -- it is an
+#     Americanism scattered evenly at 1-4%% everywhere (Lancashire 1%%, Middlesex
+#     3%%, Yorkshire 1%%) with no regional home to draw.
+#   * the Scottish values below are the two YouGov figures that are stated
+#     (chap door run 27 + chappie 23 = 50) plus an allocation of the unstated
+#     other half: run 20, ginger 8, and the rest to chicken mellie (7, no option
+#     of its own) and YouGov's long tail. The 50 is measured; the split of the
+#     remainder is an estimate, and is flagged as one in the (i) panel.
+PRANK = {
+    # Scotland's own words. YouGov gives each of the three separately and at the
+    # same scale, so unlike the run names these get one surface EACH at their own
+    # measured rate -- pointing all three at a combined 50%% would have told a
+    # chicken-mellie speaker their word is used by half of Scotland.
+    "chap":     mk(0, [(SCOT, 27)], {}),
+    "chappie":  mk(0, [(SCOT, 23)], {}),
+    "mellie":   mk(0, [(SCOT, 7)], {}),
+    "ginger": mk(2, [(SCOT, 8)], {"Wiltshire": 92, "Surrey": 89, "Middlesex": 84,
+                           "Hertfordshire": 84, "Kent": 84, "Essex": 76,
+                           "Somerset": 64, "Buckinghamshire": 50,
+                           "Gloucestershire": 26, "Hampshire": 25,
+                           "Leicestershire": 8, "Northamptonshire": 6,
+                           "Yorkshire": 4, "Shropshire": 4, "Cheshire": 3,
+                           "Derbyshire": 3, "Staffordshire": 2, "Lancashire": 1,
+                           "Nottinghamshire": 0, "Warwickshire": 0,
+                           "Worcestershire": 0, "Denbighshire": 0,
+                           "Sussex": 75, "Devon": 62, "Bedfordshire": 57}),
+    # Our Dialects call this one "clustered in a southern region of the Midlands".
+    # The respondents put it more precisely than the county grid can: 14 of the 46
+    # sit between Gloucester, Cheltenham and Stroud, and four more around
+    # Northampton. Both are blobs below.
+    "cherry": mk(0, [(SCOT, 0)], {"Gloucestershire": 68, "Northamptonshire": 24,
+                           "Somerset": 14, "Buckinghamshire": 12,
+                           "Nottinghamshire": 8, "Leicestershire": 8,
+                           "Worcestershire": 6, "Kent": 4, "Warwickshire": 4,
+                           "Hampshire": 3, "Derbyshire": 3, "Staffordshire": 2,
+                           "Yorkshire": 1, "Cheshire": 1}),
+    # entirely a blob: Northumberland (n=11) and Durham (n=7) are both under the
+    # threshold, but 11 of the 15 respondents nationally sit in one tight cluster
+    # from Newcastle down to Darlington, which is a stronger statement than either
+    # county count on its own.
+    "nicky":  mk(0, [(SCOT, 0)], {}),
+    # YouGov singles this out as the West Country's alternative to knock down
+    # ginger ("unlike the rest of the South, many in the West Country use the
+    # alternative"): 16%% in the South West and 16%% in Wales, against 4%% nationally.
+    "kkginger": mk(1, [(SW_ENG, 16), (WALES, 16)], {}),
+    # The two names YouGov found ONLY in Wales, both at 11%% of Welsh respondents.
+    # Weighted to the south: north-east Wales patterns with Cheshire and Lancashire
+    # (Denbighshire and Flintshire are 100%% run family in Our Dialects), so the
+    # Welsh-specific words belong to the rest of the country, not the Marches.
+    "wales":  mk(0, [(WALES, 8), (SWALES, 13)], {}),
+    "run":    mk(76, [(SCOT, 20)], {"Denbighshire": 100, "Lancashire": 97, "Shropshire": 96,
+                            "Cheshire": 95, "Staffordshire": 95, "Worcestershire": 94,
+                            "Yorkshire": 93, "Derbyshire": 92, "Nottinghamshire": 92,
+                            "Warwickshire": 86, "Leicestershire": 83,
+                            "Northamptonshire": 71, "Hampshire": 69,
+                            "Buckinghamshire": 31, "Somerset": 21, "Essex": 20,
+                            "Hertfordshire": 16, "Middlesex": 11, "Surrey": 11,
+                            "Kent": 8, "Wiltshire": 8, "Gloucestershire": 0,
+                            "Sussex": 25, "Devon": 12, "Bedfordshire": 14}),
+}
+PRANK_BLOBS = {
+    "cherry": [(57.5, 114.8, 92), (68.0, 109.4, 43)],  # Gloucester/Cheltenham, Northampton
+    "nicky":  [(62.5, 68.0, 60)],                      # Tyneside/Wearside
+    # Bristol is inside historic Gloucestershire but does not share its word: the
+    # eleven respondents within 25km are 82%% ginger and 0%% cherry, while the
+    # cherry cluster sits 30-50km north. Same shape as Leeds vs Bradford.
+    "ginger": [(54.0, 120.0, 80)],                     # Bristol
+}
+# ...and the matching subtractions, where a county's headline word smooths into a
+# place that measured otherwise: cherry into Bristol (9%%), run into Tyneside
+# (Northumberland 18%%, Durham 29%%, against a base of 76%%).
+PRANK_CUTS = {"cherry": [(54.0, 120.0, 30)], "run": [(62.5, 68.0, 58)]}
+
 
 def surface(valmap, sigma=2.0):
     v = np.full((H, W), np.nan)
@@ -769,8 +892,32 @@ for _term, _vm in ALLEY.items():
 grids_all["alley_alley"] = grid_json(np.clip(
     1.0 - sum(np.array(grids_all["alley_" + t], dtype=float) for t in ALLEY), 0.15, 1.0))
 
+for _term, _vm in PRANK.items():
+    # cherry turns over fast (Gloucester is ginger-free, Bristol 4 cells south is
+    # 82%% ginger), so it gets a tighter county sigma than the usual 2.0.
+    _surf = surface(_vm, 1.8 if _term == "cherry" else 2.0)
+    if _term in PRANK_BLOBS:
+        _surf = np.maximum(_surf, point_blob(PRANK_BLOBS[_term], 1.7))
+    if _term in PRANK_CUTS:
+        _surf = np.clip(_surf - point_blob(PRANK_CUTS[_term], 1.7 if _term == "run" else 1.5), 0.0, 1.0)
+    grids_all["prank_" + _term] = grid_json(_surf)
+
 grids_all["none_gum"] = negative_union(["gum_" + t for t in list(GUM_BLOBS) + ["gum"]])
 grids_all["none_alley"] = negative_union(["alley_" + t for t in list(ALLEY) + ["alley"]])
+# "no word for this" is the inverse of COVERAGE, and negative_union takes the max
+# across surfaces -- fine when the variants are alternatives to each other, wrong
+# for Scotland, where chap door run (27), chappie (23) and chicken mellie (7) are
+# three DIFFERENT people's answers. Taking the max there would say 73%% of Scots
+# have no word for this when 57%% just named one. So the Scottish three are summed
+# into a coverage surface first, and the union runs over that.
+_prank_cover = dict(grids_all)
+_prank_cover["prank_scotfam"] = grid_json(np.clip(
+    sum(np.array(grids_all["prank_" + t], dtype=float) for t in ("chap", "chappie", "mellie")),
+    0.0, 1.0))
+grids_all["prank_scotfam"] = _prank_cover["prank_scotfam"]
+grids_all["none_prank"] = negative_union(
+    ["prank_" + t for t in PRANK if t not in ("chap", "chappie", "mellie")] + ["prank_scotfam"])
+del grids_all["prank_scotfam"]      # scaffolding only; never referenced by an option
 grids_all["none_splinter"] = negative_union(["splinter", "spelk", "spell", "shiver", "sliver", "skelf"])
 grids_all["none_bread"] = negative_union(list(BREAD.keys()))
 grids_all["none_shoe"] = negative_union(["shoe_" + t for t in FOOTWEAR])
@@ -796,6 +943,10 @@ PLACES = [
     ("London", "", 75, 120), ("Norwich", "East Anglia", 88, 103),
     ("Margate", "Kent", 86, 122),
     ("Bristol", "the West Country", 54, 120), ("Exeter", "the West Country", 46, 131),
+    # added for cherry knocking: the Severn Vale measures 95%% for it and Bristol,
+    # four cells south, measures 9%%. Without a place here the star for that answer
+    # landed on Bristol, i.e. on the one nearby city that does not use the word.
+    ("Gloucester", "the Severn Vale", 57, 115),
     ("Edinburgh", "Scotland", 49, 53), ("Glasgow", "Scotland", 40, 55),
     ("Aberdeen", "", 58, 35), ("Cardiff", "Wales", 49, 119),
     ("Swansea", "South Wales", 41, 118),
@@ -1116,6 +1267,11 @@ html = """<!DOCTYPE html>
   .opt .box{flex:0 0 18px;height:18px;border:1.5px solid var(--box);border-radius:5px;display:inline-flex;
             align-items:center;justify-content:center;font-size:12px;line-height:1;color:#fff;}
   .opt.sel .box{background:var(--accent);border-color:var(--accent);}
+  /* An option's label is set as raw children of the .opt flex row, so a bare
+     <span> gloss would become its OWN flex column and squeeze the text beside
+     it. .opt-txt keeps label + gloss together as one item that wraps normally. */
+  .opt .opt-txt{flex:1;min-width:0;}
+  .opt .opt-alt{color:var(--muted);font-weight:400;font-size:13px;white-space:nowrap;}
   .hint{font-size:12px;color:var(--muted);margin:0 0 8px;min-height:16px;}
   #next{margin-top:12px;width:100%%;padding:13px;font-size:15px;font-weight:600;color:#fff;background:var(--accent);
         border:none;border-radius:12px;cursor:pointer;transition:background .12s;}
@@ -1405,6 +1561,28 @@ const QUESTIONS=[
   // first question: where did you grow up? (a GB town type-ahead, or "not from GB").
   // Not a heat-map question — collected (with consent) for future training, not scored.
   {id:"hometown",text:"Where in Great Britain did you grow up?",hometownq:true},
+  {id:"prank",text:"What do you call knocking on someone&rsquo;s door and running away?",
+   tag:"real data (YouGov 2025, n&gt;12,000; Our Dialects, n=1,469)",real:true,phon:false,multi:true,metric:"prevalence",
+   info:"prank",infoLabel:"words for knock-a-door-run",
+   opts:[
+     {label:"Knock a door run",v:"kadr",term:"knock a door run",grid:"prank_run"},
+     {label:"Knock and run",v:"run",term:"knock and run",grid:"prank_run"},
+     {label:"Knock knock run",v:"kkrun",term:"knock knock run",grid:"prank_run"},
+     {label:"Knock down ginger",v:"ginger",term:"knock down ginger",grid:"prank_ginger"},
+     {label:"Knock knock ginger",v:"kkginger",term:"knock knock ginger",grid:"prank_kkginger"},
+     {label:"Rat a tat ginger",v:"ratatat",term:"rat a tat ginger",grid:"prank_wales"},
+     {label:"Bobby knocking",v:"bobby",term:"bobby knocking",grid:"prank_wales"},
+     {label:"Cherry knocking",v:"cherry",term:"cherry knocking",grid:"prank_cherry"},
+     {label:"<span class='opt-txt'>Knocking nine doors <span class='opt-alt'>(or nicky nicky nine doors)</span></span>",
+      v:"nicky",term:"knocking nine doors",grid:"prank_nicky"},
+     {label:"Chap door run",v:"chap",term:"chap door run",grid:"prank_chap"},
+     {label:"Chappie",v:"chappie",term:"chappie",grid:"prank_chappie"},
+     {label:"Chicken mellie",v:"chickenmellie",term:"chicken mellie",grid:"prank_mellie"},
+     // no grid: 6%% nationally in YouGov and graded by AGE, not region -- 25%% of
+     // 18-29s against 2%% of over-70s -- so there is no place to point to
+     {label:"Ding dong ditch",v:"ditch",term:"ding dong ditch",none:true},
+     {label:"I don&rsquo;t have a word for this",v:"none",term:"no word for this",grid:"none_prank",excl:true,none:true}
+   ]},
   {id:"sofa",text:"What do you call the long soft seat in your living room?",
    tag:"real data (Our Dialects, n=6,302)",real:true,phon:false,multi:true,metric:"prevalence",
    info:"sofa",infoLabel:"sofa, settee or couch",
@@ -1617,6 +1795,7 @@ const ETYM={
 ,
   sofa:"<b>Sofa, settee or couch</b> &mdash; <b>sofa</b> is the majority term nationally (58%%) and dominant across the South. <b>Settee</b> is the northern and Midlands word, strongest in Blackburn (57%%), Sheffield (54%%), Doncaster, Newcastle and Wakefield. <b>Couch</b> looks like a third national option but is really two places: <b>Merseyside and west Lancashire</b>, where it is overwhelming &mdash; 76%% in Wigan, 66%% in Liverpool &mdash; and <b>Scotland</b>, at 41%%. The sharpest divide is inside Lancashire itself: Blackburn is 57%% settee and 7%% couch, while Wigan, thirty miles away, is the exact reverse.",
   gum:"<b>Words for chewing gum</b> &mdash; <b>chewing gum</b> is what four in five Britons say, and the only term across most of the country. Three local words survive inside that: <b>chewy</b> is a Merseyside word, used by 78%% in Liverpool and thinning out through Warrington, Wigan and Chester; <b>chuddy</b> runs along the Pennines, from Stockport and Manchester across to Sheffield, Leeds and Bradford; and <b>chud</b> is Newcastle&rsquo;s alone. The three barely overlap, which is unusual even among lexical variants.",
+  prank:"<b>Words for knock-a-door-run</b> &mdash; knocking on a door and running away before it opens, and one of the sharpest splits in Britain: four countries&rsquo; worth of words on one island. The <b>run</b> names &mdash; <i>knock a door run</i> (21%% nationally), <i>knock and run</i> (13%%) and <i>knock knock run</i> (2%%) &mdash; are what three-quarters of England and Wales say, and are near-universal in the North and Midlands: 97%% in Lancashire, 95%% in Cheshire and Staffordshire, 93%% in Yorkshire. The South says <b>knock down ginger</b> instead (25%% nationally, but 63%% in London, 56%% in the East of England, 55%% in the South East), and the changeover is abrupt rather than gradual. The West Country breaks from the rest of the South with <b>knock knock ginger</b> (16%%). <b>Scotland has its own word entirely</b>: half of Scots say <b>chap door run</b> (27%%) or the clipped <b>chappie</b> (23%%), from Scots <i>chap</i> &lsquo;to knock&rsquo;, and 7%% say <b>chicken mellie</b>, which turns up nowhere else in the UK. <b>Wales</b> is the least united of all &mdash; no name passes 16%% &mdash; but <b>bobby knocking</b> and <b>rat a tat ginger</b> (11%% each) are found there and nowhere else. Two smaller English words complete it: <b>cherry knocking</b> in the Severn Vale around Gloucester and Cheltenham (95%%, though Bristol just to the south does not use it) with a second pocket around Northampton, and <b>knocking nine doors</b> on Tyneside and Wearside (56%% across the North East). <b>Ding dong ditch</b> is an American import that divides by age rather than place &mdash; 25%% of 18&ndash;29s against 2%% of over-70s &mdash; so it has no map. Two caveats: the three <i>run</i> names share one map because the only source with county-level detail records them as a single group, and Scotland&rsquo;s half-share is measured while the split of its remaining half is an estimate.",
   alley:"<b>Words for an alleyway</b> &mdash; the narrow walkway between or behind houses, and one of the most finely divided words in Britain. <b>Alley</b> or <b>alleyway</b> is the national default and almost the only word used in the south. The north is where it fragments: <b>ginnel</b> across Lancashire, Greater Manchester and West Yorkshire; <b>snicket</b> in a tight pocket around Bradford and York; <b>gennel</b> around Sheffield; <b>jitty</b> through Derby, Nottingham and Leicester; <b>entry</b> on Merseyside and in the West Midlands; and <b>cut</b> in Newcastle. The sharpest divide of all is Bradford against Leeds &mdash; snicket and ginnel, about ten miles apart.",
   tag:"<b>Names for tag/it</b> &mdash; <i>tig</i> covers most of England, Scotland &amp; Wales; <i>it</i> is the South East&rsquo;s word instead of <i>tig</i>. Distinct local pockets survive within that: <i>tiggy</i> and <i>tuggy</i> side by side around Durham &amp; North Yorkshire, <i>tick</i> and a tiny <i>tip</i> pocket in North Wales, <i>touch</i> around Birmingham and in the South West, <i>had</i> on the Suffolk/Essex coast, <i>hit</i> on the South Devon coast, and <i>dobby</i> &mdash; a well-known Nottinghamshire/South Yorkshire term &mdash; in a tight pocket around Sheffield."
 };
@@ -1653,6 +1832,7 @@ const INFO_LINKS={
 // unsourced, which is not what a partial list means.
 const SOURCES=[
   "YouGov, August 2025 (n&asymp;38,000)",
+  "YouGov, February 2025 (n&gt;12,000)",
   "BBC Voices, via Grieve et al. (2019)",
   "Starkey Comics dialect surveys",
   "MacKenzie, Bailey &amp; Turton (2022), <i>Journal of Linguistic Geography</i>",
@@ -2060,8 +2240,8 @@ function matchRegion(surf){
   // a genuinely strong regional signal -> name the top zone(s). Fine regions collapse into big
   // zones (North/South of England, the Midlands) when >=2 of a set are hot; Scotland & Wales
   // stay named. Zones are ranked by strength, so the strongest are always kept.
-  if(topMean>=0.40){
-    const hot=regionNames.filter(n=>mean[n]>=0.6*topMean && mean[n]>=0.32);
+  // zones() names the hot regions, collapsing fine ones into big zones.
+  const nameZones=(hot)=>{
     const zones=[]; const used=new Set();
     const grp=(set,label)=>{const inh=set.filter(n=>hot.includes(n));
       if(inh.length>=2){ zones.push([label, Math.max.apply(null,inh.map(n=>mean[n]))]); set.forEach(n=>used.add(n)); }};
@@ -2070,10 +2250,29 @@ function matchRegion(surf){
     zones.sort((a,b)=>b[1]-a[1]);
     const nm=zones.map(z=>z[0]);
     if(nm.includes("the North of England") && nm.includes("the South of England")) return "much of Britain";
-    return nm.length?joinRegions(nm.slice(0,3)):"several regions";
+    return nm.length?joinRegions(nm.slice(0,3)):null;
+  };
+  if(topMean>=0.40){
+    const r=nameZones(regionNames.filter(n=>mean[n]>=0.6*topMean && mean[n]>=0.32));
+    return r||"several regions";
   }
   // a sharp LOCAL peak in an otherwise-cool region (muffin=Manchester, batch=Coventry)
   if(peakVal>=0.45 && meanA[peakReg]<0.35) return regionNames[peakReg];
+  // LAST resort, reached only where the two branches above already gave up. A word
+  // can be low everywhere and still unmistakably belong somewhere: "knock knock
+  // ginger" is 16%% in the South West and Wales and ~1%% elsewhere -- sharply
+  // regional, but nowhere near the 0.40/0.32 absolute bars, so it used to fall
+  // through to the vague "several regions". Judge those on the RATIO to the
+  // national mean instead of the level, the same way the star floor does. Each
+  // named region must also clear twice the national mean, or cross-border bleed
+  // gets named alongside the real thing.
+  const allMean=(()=>{let s=0,n=0;
+    for(let r=0;r<H_;r++)for(let c=0;c<W;c++){const v=surf[r]?surf[r][c]:null; if(v!=null){s+=v;n++;}}
+    return n?s/n:0;})();
+  if(allMean>0 && topMean/allMean>=2.5){
+    const r=nameZones(regionNames.filter(n=>mean[n]>=0.6*topMean && mean[n]>=2.0*allMean));
+    if(r) return r;
+  }
   return "several regions";
 }
 
@@ -2224,6 +2423,15 @@ function drawMap(q,ans){
   let matchHTML;
   if(noResult || !scored.length){
     matchHTML="<span style='color:#8a857c;font-weight:500'>Inconclusive &mdash; this doesn&rsquo;t point to a particular place.</span>";
+  } else if(starPlaces.length>=3 &&
+            new Set(starPlaces.map(p=>regionGrid[p.row|0][p.col|0])).size===1 &&
+            regionGrid[starPlaces[0].row|0][starPlaces[0].col|0]>=0){
+    // Three tied places inside ONE region isn't three findings, it's one: a word
+    // that is uniform across the whole region. Listing them spells the region's
+    // name out three times ("Glasgow (Scotland) & Aberdeen & Edinburgh
+    // (Scotland)"), and implies a precision the surface doesn't have.
+    matchHTML="&#128205; most common in <b>"+
+      regionNames[regionGrid[starPlaces[0].row|0][starPlaces[0].col|0]]+"</b>";
   } else if(starPlaces.length){
     matchHTML="&#9733; <b>"+starPlaces.map(placeName).join(" &amp; ")+"</b>";
   } else {
@@ -2631,7 +2839,7 @@ function leaveHometown(){
 const LINKS={ linkedin:"" };      // <-- paste your LinkedIn profile URL
 const COLLECT={
   endpoint:"https://script.google.com/macros/s/AKfycbynutWpL2Z3-7nigKUseLYBgrzfEuANgxA7RapaKn_ME1e5pG-Vu5F_-SrM2UvHdair/exec",
-  version:"2026-08-11"      // bump when the question set changes, so responses stay comparable
+  version:"2026-08-13"      // bump when the question set changes, so responses stay comparable
 };
 // Random per page-load, NOT persisted: enough to drop an accidental double-submit
 // within one sitting, while never linking a visitor across visits.

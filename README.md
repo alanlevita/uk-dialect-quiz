@@ -1,8 +1,8 @@
 # The Great British Dialect Quiz
 
-An interactive dialect atlas of Great Britain. Twenty questions about how you
-speak, each answered with a map redrawn from published dialect research — and a
-final map placing your accent against twenty-two named places.
+An interactive dialect atlas of Great Britain. Twenty-three questions about how
+you speak, each answered with a map redrawn from published dialect research —
+and a final map placing your accent against twenty-three named places.
 
 **Live at [www.ukdialectquiz.org](https://www.ukdialectquiz.org)**
 
@@ -93,6 +93,8 @@ min-max rescaled. The result names the place with the highest neighbourhood mean
 ## Data sources
 
 - YouGov, August 2025 (n ≈ 38,000) — school plimsolls, county-level
+- YouGov, February 2025 (n > 12,000) — [names for the door-knocking prank](https://yougov.com/en-gb/articles/51544-is-it-knock-down-ginger-or-knock-a-door-run),
+  the only source with Scottish coverage for that word
 - *Our Dialects* — L. MacKenzie, G. Bailey & D. Turton, [ourdialects.uk](https://www.ourdialects.uk/),
   © George Bailey, [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/)
 - MacKenzie, Bailey & Turton (2022), *Journal of Linguistic Geography*
