@@ -650,6 +650,60 @@ PRANK_BLOBS = {
 # (Northumberland 18%%, Durham 29%%, against a base of 76%%).
 PRANK_CUTS = {"cherry": [(54.0, 120.0, 30)], "run": [(62.5, 68.0, 58)]}
 
+# ---- "your pants are on backwards": pants or trousers? -------------------------
+# Our Dialects, n=6,291 -- the biggest lexical sample in the set, and unusually
+# clean: a North West core that falls away fast in every direction. Lancashire
+# 55%%, Cheshire 39%%, then Yorkshire 14%% and Staffordshire 2%%. Everything from
+# the Midlands south sits at 0-7%%, and Scotland (n=135) at 3%%.
+# The county grid understates the cities, because historic Lancashire runs from
+# Liverpool to the Lakes and the word peaks in the conurbation: Liverpool measures
+# 58%%, Manchester 50%%, against a county-wide 55%% that includes the rural north.
+# The pair worth having is Manchester (50%%) against Stoke (3%%) -- thirty miles,
+# and the sharpest separation of those two anywhere in the question set.
+PANTS = mk(2, None, {
+    "Lancashire": 55, "Cheshire": 39, "Northumberland": 36, "Cumberland": 27,
+    "Flintshire": 26, "Durham": 18, "Denbighshire": 16, "Yorkshire": 14,
+    "Westmorland": 27,          # no sample of its own; sits between Cumberland and Lancashire
+    "Midlothian": 9, "Renfrewshire": 8,
+    "Derbyshire": 7, "Lincolnshire": 7, "Berkshire": 7, "Warwickshire": 7,
+    "Cambridgeshire": 5, "Glamorgan": 5, "Devon": 5, "Worcestershire": 5,
+    "Norfolk": 4, "Buckinghamshire": 4,
+    "Dorset": 3, "Nottinghamshire": 3, "Surrey": 3, "Sussex": 3,
+    "Leicestershire": 3, "Northamptonshire": 3,
+    "Staffordshire": 2, "Middlesex": 2, "Gloucestershire": 2, "Shropshire": 2,
+    "Suffolk": 2, "Kent": 2,
+    "Essex": 1, "Hampshire": 1, "Hertfordshire": 1,
+    "Cornwall": 0, "Somerset": 0, "Wiltshire": 0, "Oxfordshire": 0,
+    "Monmouthshire": 0, "Bedfordshire": 0, "Herefordshire": 0,
+    "Huntingdonshire": 0, "Lanarkshire": 0, "Stirlingshire": 0, "Pembrokeshire": 0,
+})
+PANTS_BLOBS = [(51.0, 91.1, 58), (57.0, 90.0, 50), (61.0, 85.0, 27), (63.0, 68.0, 33)]
+# Stoke sits two cells below Cheshire's 39%% and the smoothing handed it 12%%, but
+# its own 100 respondents measure 3%%. It is the whole point of this question --
+# Manchester 50%% against Stoke 3%% -- so the inherited value comes back off.
+PANTS_CUTS = [(57.0, 97.0, 11)]
+
+# ---- "Look at them animals" ----------------------------------------------------
+# Our Dialects, n=2,659, rated 1-5 for acceptability; the values here are the mean
+# rating rescaled to 0-100. Demonstrative "them" for "those" -- a third distinct
+# grammatical variable alongside the plural pronoun (yous) and the dative (give it
+# me), and the widest north/south spread of the three: Yorkshire 81 and Lancashire
+# 80 against Oxfordshire 54, with Scotland lowest of all.
+# Scotland has 46 respondents -- too few to split by county, enough for one
+# national figure (mean 50), so it is applied flat rather than left blank.
+THEM = mk(72, [(SCOT, 50)], {
+    "Yorkshire": 81, "Lancashire": 80, "Northumberland": 79, "Derbyshire": 76,
+    "Durham": 75, "Cheshire": 75, "Shropshire": 75, "Staffordshire": 74,
+    "Warwickshire": 72, "Bedfordshire": 72, "Nottinghamshire": 69,
+    "Essex": 65, "Kent": 65, "Sussex": 65, "Gloucestershire": 65,
+    "Leicestershire": 64, "Somerset": 63, "Hertfordshire": 63, "Middlesex": 62,
+    "Surrey": 60, "Worcestershire": 60, "Glamorgan": 57, "Buckinghamshire": 56,
+    "Berkshire": 56, "Hampshire": 56, "Oxfordshire": 54,
+    # Cumberland and Westmorland have no sample; they sit inside the northern
+    # block on every other variable in this survey, so they take its level.
+    "Cumberland": 78, "Westmorland": 78,
+})
+
 
 def surface(valmap, sigma=2.0):
     v = np.full((H, W), np.nan)
@@ -901,6 +955,20 @@ for _term, _vm in PRANK.items():
     if _term in PRANK_CUTS:
         _surf = np.clip(_surf - point_blob(PRANK_CUTS[_term], 1.7 if _term == "run" else 1.5), 0.0, 1.0)
     grids_all["prank_" + _term] = grid_json(_surf)
+
+_pants = np.maximum(surface(PANTS), point_blob(PANTS_BLOBS, 1.6))
+_pants = np.clip(_pants - point_blob(PANTS_CUTS, 1.4), 0.0, 1.0)
+grids_all["pants"] = grid_json(_pants)
+grids_all["trousers"] = grid_json(np.clip(1.0 - _pants, 0.15, 1.0) * land)
+# Acceptability spans only 50-81 nationally -- a real finding (the construction is
+# broadly accepted everywhere) but, left raw, every rating on the slider reads back
+# as "much of Britain". Stretched onto the same 0.12-0.82 band the give-it-me
+# slider already uses, so the two behave alike and the map shows the north-south
+# gradient instead of a flat wash. The band is relative, like give-it-me's.
+_them = surface(THEM)
+_tv = _them[land]
+_them = np.where(land, 0.12 + (_them - _tv.min()) / (_tv.max() - _tv.min()) * 0.70, 0.0)
+grids_all["them"] = grid_json(_them)
 
 grids_all["none_gum"] = negative_union(["gum_" + t for t in list(GUM_BLOBS) + ["gum"]])
 grids_all["none_alley"] = negative_union(["alley_" + t for t in list(ALLEY) + ["alley"]])
@@ -1380,10 +1448,16 @@ html = """<!DOCTYPE html>
   .intro-hint.dim{opacity:.28;}
   .intro-lead{font-size:21px;line-height:1.35;font-weight:700;letter-spacing:-.01em;margin:0 0 11px;}
   .intro-body{font-size:14px;line-height:1.5;color:var(--body);margin:0 0 11px;}
-  .intro-kicker{font-size:11px;letter-spacing:.09em;text-transform:uppercase;font-weight:750;
-       color:var(--muted);margin:0 0 7px;padding-top:12px;border-top:1px solid var(--line);}
-  .intro-why{font-size:13px;line-height:1.5;color:var(--body);margin:0 0 10px;}
-  .intro-points{list-style:none;margin:0 0 14px;padding:0;}
+  /* three numbers instead of a paragraph of claims: the scale IS the argument,
+     and it reads in a glance where prose has to be waded through */
+  .intro-stats{display:flex;gap:26px;margin:16px 0 14px;padding:12px 0;
+       border-top:1px solid var(--line);border-bottom:1px solid var(--line);}
+  .intro-stats div{line-height:1.1;}
+  .intro-stats b{display:block;font-size:20px;font-weight:750;color:var(--accent);
+       letter-spacing:-.015em;margin-bottom:3px;}
+  .intro-stats span{font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);}
+  .intro-why{font-size:13px;line-height:1.5;color:var(--body);margin:0 0 12px;}
+  .intro-points{list-style:none;margin:0 0 16px;padding:0;}
   .intro-points li{position:relative;padding-left:15px;font-size:13px;line-height:1.45;
        color:var(--body);margin-bottom:6px;}
   .intro-points li:last-child{margin-bottom:0;}
@@ -1484,21 +1558,25 @@ html = """<!DOCTYPE html>
     </div>
     <div class="intro-right">
       <p class="intro-lead">How you say a few everyday words &mdash; and what you call bread, or a splinter &mdash; quietly gives away where in Britain you&rsquo;re from.</p>
-      <p class="intro-kicker">A living atlas of British English</p>
+      <div class="intro-stats">
+        <div><b>25</b><span>questions</span></div>
+        <div><b>8 km</b><span>resolution</span></div>
+        <div><b>1</b><span>result</span></div>
+      </div>
       <p class="intro-why">Britain packs more dialect variation into one island than almost anywhere in the
-        English-speaking world &mdash; and most maps of it sit in decades-old atlases. This one is rebuilt from
-        the research, put in your hands, and redrawn by everyone who plays.</p>
+        English-speaking world, and most of it sits in decades-old atlases. This one is live &mdash; and it
+        gets redrawn by everyone who plays.</p>
       <ul class="intro-points">
-        <li><b>Interactive, not illustrative.</b> Other quizzes hand you a picture. Every map here is live &mdash;
-          hover any city to see the word it really uses, and how common it is.</li>
-        <li><b>It shows its working.</b> Nothing is invented: every isogloss is redrawn from published dialect
-          research and large-scale surveys, and each question names the feature behind it.</li>
-        <li><b>It gets sharper as you play.</b> With consent, your answers feed straight back into the maps.
-          Most dialect surveys are a snapshot from one year; this one is still being drawn.</li>
+        <li><b>Every map is live.</b> Hover over any city to see the word it actually uses &mdash;
+          scored across 4,025 points of Britain.</li>
+        <li><b>Nothing is invented.</b> Every map comes from published research.</li>
+        <li><b>It sharpens as you play.</b> With consent, your answers redraw the maps. Everything is
+          stored anonymously and used solely to study regional language variation and to improve
+          future versions of the quiz.</li>
       </ul>
-      <label class="consent"><input type="checkbox" id="consent"><span>I agree to the <span class="tlink" id="termsbtn">terms of data collection<span class="terms-pop" id="termspop">By ticking this box, you consent to the collection and storage of your quiz answers and, if you provide it, your hometown. This information is stored <b>anonymously</b>: no name, email address, or IP address is recorded, and it cannot be traced back to you. It is used solely to study regional language variation and to improve future versions of the quiz. Your data will not be sold or shared with third parties.</span></span></span></label>
+      <label class="consent"><input type="checkbox" id="consent"><span>I agree to the <span class="tlink" id="termsbtn">terms of data collection<span class="terms-pop" id="termspop">By ticking this box, you consent to the collection and storage of your quiz answers and, if you provide it, your hometown. This information is stored <b>anonymously</b>: no name or email address is recorded, we do not store your IP address with your answers, and the record cannot be traced back to you. It is used solely to study regional language variation and to improve future versions of the quiz. Your data will not be sold or shared with third parties.</span></span></span></label>
       <button id="startbtn">Start the quiz &rarr;</button>
-      <p class="intro-note"><span class="aboutwrap"><span class="aboutbtn">&#9432;</span><span class="aboutinfo">This is a pixel-art version of the British dialect map, made by <b id="authorname">Alan Levita</b> during a research internship at the Intellectual Forum.<br><br>Your answers are used to estimate roughly where you&rsquo;re from. All the maps were redrawn by hand in a pixel-art style, based on isoglosses from published dialect research and large-scale surveys.</span></span> Powered by the Intellectual Forum at Jesus College, Cambridge</p>
+      <p class="intro-note"><span class="aboutwrap"><span class="aboutbtn">&#9432;</span><span class="aboutinfo">Made by <b id="authorname">Alan Levita</b> during an internship at the Intellectual Forum, Jesus College, Cambridge.<br><br>Your answers are used to estimate roughly where you&rsquo;re from. Every map is a pixel-art rendering of an existing map from published dialect research or a large-scale survey &mdash; each one is redrawn onto a coarse grid of Great Britain, not traced.<br><br>Each question cites the research behind its own map: open the &#9432; beside any map to see it. The full list is also on the results screen.</span></span> Designed and produced by Alan Levita</p>
     </div>
     </div>
   </div>
@@ -1583,6 +1661,17 @@ const QUESTIONS=[
      {label:"Ding dong ditch",v:"ditch",term:"ding dong ditch",none:true},
      {label:"I don&rsquo;t have a word for this",v:"none",term:"no word for this",grid:"none_prank",excl:true,none:true}
    ]},
+  {id:"pants",text:"&ldquo;Your &#95;&#95;&#95;&#95; are on backwards.&rdquo;",
+   tag:"real data (Our Dialects, n=6,291)",real:true,phon:false,metric:"prevalence",
+   info:"pants",infoLabel:"pants vs trousers",
+   opts:[
+     {label:"Trousers",v:"trousers",term:"trousers",grid:"trousers"},
+     {label:"Pants",v:"pants",term:"pants",grid:"pants"}
+   ]},
+  {id:"them",text:"How natural does &ldquo;<i>Look at them animals</i>&rdquo; sound to you (for <i>those animals</i>)?",
+   tag:"real data (Our Dialects, n=2,659)",real:true,metric:"pct",
+   slider:true,grid:"them",sliderLabels:["Sounds wrong","Sounds fine"],
+   info:"them",infoLabel:"demonstrative &lsquo;them&rsquo;"},
   {id:"sofa",text:"What do you call the long soft seat in your living room?",
    tag:"real data (Our Dialects, n=6,302)",real:true,phon:false,multi:true,metric:"prevalence",
    info:"sofa",infoLabel:"sofa, settee or couch",
@@ -1776,28 +1865,30 @@ const ETYM={
   roll:"<b>roll</b> &mdash; named for its rolled, rounded shape; via Old French <i>rol(l)er</i> from Latin <i>rotulus</i> \\"little wheel\\".",
   softie:"<b>softie</b> &mdash; a North East Scotland (Doric) word, from the same root as <i>soft</i>: a plain, soft-crusted white roll, as opposed to a crustier <i>bap</i>. Strongest on the Aberdeenshire coast.",
   footstrut:"<b>The FOOT&ndash;STRUT split</b> &mdash; in the 17th century the Middle English short <i>u</i> /&#650;/ split, in southern England, into two vowels: /&#650;/ (FOOT) and a new unrounded /&#652;/ (STRUT). The split never reached most of the North &amp; Midlands, where <i>foot</i> and <i>strut</i> still share /&#650;/ and rhyme.",
-  tvd:"<b>Tea, dinner or supper</b> &mdash; the name for the evening meal, and one of the sharpest north/south splits in Britain. <b>Tea</b> is the northern term: 80%% in Westmorland, 77%% in Yorkshire, 76%% in Northumberland, but only 4%% in Middlesex. <b>Dinner</b> is the southern one and runs the other way, near 90%% across Essex, Middlesex and Hertfordshire. <b>Supper</b> is a distant third nationally at 4%%, but it is not evenly spread: it reaches 23%% in <b>Oxfordshire</b> and around one in eight through Sussex, Hampshire and Somerset, while barely registering in the North. It also carries a class edge as well as a regional one &mdash; <i>dinner</i> was the &lsquo;U&rsquo;/upper-class usage in Ross (1954), and <i>supper</i> more so still.",
+  tvd:"<b>Tea, dinner or supper</b> &mdash; the evening meal, and one of the sharpest north/south splits in Britain. <b>Tea</b> is northern: 80%% in Westmorland and 77%% in Yorkshire, against 4%% in Middlesex. <b>Dinner</b> runs the other way, near 90%% across Essex and Hertfordshire. <b>Supper</b> is a distant third nationally but reaches 23%% in Oxfordshire, and carries a class edge as well as a regional one.",
   bookspook:"<b>book vs spook</b> &mdash; in some accents the <i>-ook</i> words (book, cook, look) keep the old long vowel /u&#720;/, so <i>book</i> is [bu&#720;k] and rhymes with <i>spook</i> &mdash; putting it in the GOOSE set rather than FOOT. Traditional in the North East and Stoke (and once Liverpool); Scotland has no foot&ndash;goose distinction at all.",
-  nursesquare:"<b>The NURSE&ndash;SQUARE merger</b> &mdash; in some accents the vowels of NURSE (<i>stir, fur, her</i>) and SQUARE (<i>stare, fair, hair</i>) fall together, so <i>stir</i> and <i>stare</i> (or <i>fur</i> and <i>fair</i>) rhyme. It is long-established and best-documented in Liverpool / Merseyside and the North West, and is now also strong &mdash; and apparently spreading &mdash; along the east coast (Hull, Teesside). An older East-Midlands merger has largely faded, though north-east Lincolnshire still has it.",
-  scone:"<b>scone</b> &mdash; the great teatime shibboleth: does it rhyme with <i>gone</i> (/sk&#594;n/) or with <i>bone</i>/<i>cone</i> (/sko&#650;n/)? Most of Britain &mdash; Scotland and the North especially &mdash; rhymes it with <i>gone</i>. The <i>bone</i> pronunciation is the local norm in the <b>East Midlands</b> (Nottingham, Derby, Leicester), with the far South West leaning that way a little too.",
+  nursesquare:"<b>The NURSE&ndash;SQUARE merger</b> &mdash; in some accents the vowels of NURSE (<i>stir, fur</i>) and SQUARE (<i>stare, fair</i>) fall together, so <i>stir</i> and <i>stare</i> rhyme. Best documented in Liverpool and the North West, and now strong &mdash; and apparently spreading &mdash; along the east coast, in Hull and on Teesside.",
+  scone:"<b>scone</b> &mdash; the great teatime shibboleth: does it rhyme with <i>gone</i> or with <i>bone</i>? Most of Britain &mdash; Scotland and the North especially &mdash; rhymes it with <i>gone</i>. The <i>bone</i> pronunciation is the local norm in the <b>East Midlands</b>, with the far South West leaning that way too.",
   northforce:"<b>The NORTH&ndash;FORCE merger</b> &mdash; whether <i>horse</i> and <i>hoarse</i> (or <i>for</i> and <i>four</i>, <i>war</i> and <i>wore</i>) sound identical. Most of England and Wales merged them long ago, so they rhyme; <b>Scotland</b> keeps them clearly distinct, as do pockets around <b>Manchester</b> and Merseyside.",
   forcecure:"<b>The CURE&ndash;FORCE merger</b> &mdash; whether <i>poor</i> and <i>pour</i> (or <i>sure</i> and <i>shore</i>, <i>tour</i> and <i>tore</i>) sound identical. Across most of England they have merged, so they rhyme; the older distinct <i>poor</i>/<i>sure</i> vowel /&#650;&#601;/ survives in <b>Scotland</b>, the <b>North East</b>, and <b>West Yorkshire</b>.",
-  youse:"<b>Plural &lsquo;yous(e)&rsquo;</b> &mdash; a second-person plural pronoun, filling the gap English left when <i>thou/you</i> collapsed to just <i>you</i>. Strongest in <b>Scotland</b> and the <b>North East</b> (Newcastle, Sunderland, Middlesbrough), fading through the Midlands, and rare in southern England, where <i>you guys</i> or plain <i>you</i> is used instead.",
-  mother:"<b>Words for &lsquo;mother&rsquo;</b> &mdash; <b>mum</b> is the general term across most of England and Scotland. <b>Mam</b> is the Welsh and Irish word, and is standard in <b>Wales</b>, the <b>North East</b> and <b>Cumbria</b>. <b>Mom</b> is almost entirely a <b>West Midlands</b> form, centred on Birmingham and reaching west as far as Telford &mdash; it is not an Americanism there but a long-standing local usage. <b>Maw</b> is a Scots clipping heard across the Central Belt, and <b>mummy</b> survives in adults mainly in south-east England. <b>Mammy</b> is overwhelmingly Irish, but has a real foothold in <b>south-west Wales</b> around Swansea and Carmarthenshire.",
-  shoes:"<b>Names for PE plimsolls</b> &mdash; the black canvas shoes worn for primary-school PE, and one of the most sharply regional words in Britain. <b>Plimsolls</b> is the southern and eastern norm (91%% in Norfolk), but flips to <b>pumps</b> across the North West and West Midlands (72&ndash;75%% in Cheshire, Lancashire, Merseyside and Staffordshire). <b>Daps</b> clusters either side of the Severn Estuary &mdash; South Wales and the Bristol area. Scotland splits several ways: <b>sandshoes</b> or <b>sannies</b> around the Clyde, <b>gutties</b> in Lanarkshire, <b>gym shoes</b> in the North East, and <b>rubbers</b> almost only in the Lothians. There is also a striking island of <i>sandshoes</i> around Hull.",
-  singerfinger:"<b>Velar nasal plus</b> (also called <i>ng</i>-coalescence) &mdash; whether a hard [&#609;] survives after the <i>ng</i>, so <i>singer</i> is [s&#618;&#331;&#609;&#601;] and rhymes with <i>finger</i>. English generally dropped that [&#609;] around the 17th century, but the change never took hold across the <b>North West</b> and <b>West Midlands</b>: Manchester, Liverpool, Stoke, Birmingham and Cheshire keep it, as does north-east Wales (Flintshire, Wrexham). Elsewhere &mdash; the North East, East Anglia, the South &mdash; the two words are distinct.",
-  thfronting:"<b>TH-fronting</b> &mdash; replacing the &lsquo;th&rsquo; sounds /&#952;/ and /&#240;/ with /f/ and /v/, so <i>think</i> &rarr; <i>fink</i> and <i>brother</i> &rarr; <i>bruvver</i>. Once a London (Cockney) feature, it has spread rapidly since the late 20th century and is now common across much of urban England, especially among younger speakers &mdash; while remaining rare in Scotland, Wales, and rural areas generally.",
-  skiveclass:"<b>Words for skipping school</b> without permission, from the BBC Voices survey. <b>Skive</b> is the general British term, strongest in Scotland and the South West; <b>bunk off</b> is a London/South East form; <b>wag</b> belongs to the North West and North East; <b>play hookey</b> is a chiefly North Eastern (Tyneside) usage; <b>skip</b> is used more loosely nationwide, without a single clear home region.",
+  youse:"<b>Plural &lsquo;yous(e)&rsquo;</b> &mdash; a second-person plural pronoun, filling the gap English left when <i>thou/you</i> collapsed to just <i>you</i>. Strongest in <b>Scotland</b> and the <b>North East</b>, fading through the Midlands, and rare in southern England.",
+  mother:"<b>Words for &lsquo;mother&rsquo;</b> &mdash; <b>mum</b> is general across England and Scotland. <b>Mam</b> is the Welsh, North East and Cumbrian word. <b>Mom</b> is almost entirely <b>West Midlands</b>, centred on Birmingham &mdash; not an Americanism there but long-standing local usage. <b>Maw</b> is a Scots clipping, <b>mummy</b> survives in adults mainly in the South East, and <b>mammy</b> has a real foothold in south-west Wales.",
+  shoes:"<b>Names for PE plimsolls</b> &mdash; the canvas shoes worn for primary-school PE, and one of the most sharply regional words in Britain. <b>Plimsolls</b> is the southern and eastern norm (91%% in Norfolk) but flips to <b>pumps</b> across the North West and West Midlands. <b>Daps</b> clusters either side of the Severn Estuary. Scotland splits several ways: <b>sandshoes</b> around the Clyde, <b>gutties</b> in Lanarkshire, <b>rubbers</b> almost only in the Lothians.",
+  singerfinger:"<b>Velar nasal plus</b> &mdash; whether a hard [&#609;] survives after the <i>ng</i>, so <i>singer</i> rhymes with <i>finger</i>. English generally dropped it around the 17th century, but the change never took hold across the <b>North West</b> and <b>West Midlands</b>: Manchester, Liverpool, Stoke, Birmingham and north-east Wales keep it. Elsewhere the two words are distinct.",
+  thfronting:"<b>TH-fronting</b> &mdash; replacing /&#952;/ and /&#240;/ with /f/ and /v/, so <i>think</i> &rarr; <i>fink</i> and <i>brother</i> &rarr; <i>bruvver</i>. Once a London feature, it has spread rapidly since the late 20th century across urban England, especially among younger speakers, while staying rare in Scotland and Wales.",
+  skiveclass:"<b>Words for skipping school</b> without permission. <b>Skive</b> is the general British term, strongest in Scotland and the South West; <b>bunk off</b> is a London/South East form; <b>wag</b> belongs to the North West and North East; <b>play hookey</b> is chiefly Tyneside.",
   trapbath:"<b>The trap&ndash;bath split</b> &mdash; in the 18th century southern English lengthened the <i>a</i> in a set of words (<i>bath, grass, last, dance</i>) to /&#593;&#720;/, splitting them from TRAP words (<i>cat, trap</i>). The North, Wales and Scotland kept the short /a/ &mdash; so a northerner says [ba&#952;], a southerner [b&#593;&#720;&#952;]. It&rsquo;s one of the sharpest north&ndash;south markers.",
-  splinter:"<b>Words for a splinter</b> of wood in the skin. <b>Splinter</b> is the standard nationwide; <b>spelk</b> (from Old Norse / Old English <i>spelc</i>) belongs to the North East &amp; the Borders; <b>spell</b> is northern; <b>shiver</b> is East Anglian; <b>sliver</b> is a South East word; and <b>skelf</b> is the Scots term, dense across the Central Belt and the Highlands.",
-  giveitme:"<b>&lsquo;Give it me&rsquo;</b> &mdash; the &lsquo;alternative double-object&rsquo; dative: the theme (<i>it</i>) comes before the goal (<i>me</i>) with no <i>to</i> &mdash; <i>give it me</i> rather than <i>give it to me</i> or <i>give me it</i>. It&rsquo;s a North West &amp; Midlands feature (strongest around Manchester and the Potteries), thinning towards the North East and the South.",
-  lolly:"<b>Ice lolly vs lolly ice</b> &mdash; <i>ice lolly</i> is the standard British term; <i>lolly ice</i> (the words reversed) is the well-known Merseyside / Liverpool (&lsquo;Scouse&rsquo;) form. Further afield you&rsquo;ll hear <i>ice pop</i> (Ireland, Scotland) or <i>popsicle</i> (North America)."
+  splinter:"<b>Words for a splinter</b> of wood in the skin. <b>Splinter</b> is the nationwide standard; <b>spelk</b> (from Old English <i>spelc</i>) belongs to the North East and the Borders; <b>spell</b> is northern; <b>shiver</b> is East Anglian; <b>sliver</b> is a South East word; and <b>skelf</b> is the Scots term.",
+  giveitme:"<b>&lsquo;Give it me&rsquo;</b> &mdash; the theme (<i>it</i>) before the goal (<i>me</i>) with no <i>to</i>. A North West &amp; Midlands feature, strongest around Manchester and the Potteries, thinning towards the North East and the South.",
+  lolly:"<b>Ice lolly vs lolly ice</b> &mdash; <i>ice lolly</i> is the standard British term; <i>lolly ice</i>, the words reversed, is the Merseyside form. Further afield you&rsquo;ll hear <i>ice pop</i> (Ireland, Scotland) or <i>popsicle</i> (North America)."
 ,
-  sofa:"<b>Sofa, settee or couch</b> &mdash; <b>sofa</b> is the majority term nationally (58%%) and dominant across the South. <b>Settee</b> is the northern and Midlands word, strongest in Blackburn (57%%), Sheffield (54%%), Doncaster, Newcastle and Wakefield. <b>Couch</b> looks like a third national option but is really two places: <b>Merseyside and west Lancashire</b>, where it is overwhelming &mdash; 76%% in Wigan, 66%% in Liverpool &mdash; and <b>Scotland</b>, at 41%%. The sharpest divide is inside Lancashire itself: Blackburn is 57%% settee and 7%% couch, while Wigan, thirty miles away, is the exact reverse.",
-  gum:"<b>Words for chewing gum</b> &mdash; <b>chewing gum</b> is what four in five Britons say, and the only term across most of the country. Three local words survive inside that: <b>chewy</b> is a Merseyside word, used by 78%% in Liverpool and thinning out through Warrington, Wigan and Chester; <b>chuddy</b> runs along the Pennines, from Stockport and Manchester across to Sheffield, Leeds and Bradford; and <b>chud</b> is Newcastle&rsquo;s alone. The three barely overlap, which is unusual even among lexical variants.",
-  prank:"<b>Words for knock-a-door-run</b> &mdash; knocking on a door and running away before it opens, and one of the sharpest splits in Britain: four countries&rsquo; worth of words on one island. The <b>run</b> names &mdash; <i>knock a door run</i> (21%% nationally), <i>knock and run</i> (13%%) and <i>knock knock run</i> (2%%) &mdash; are what three-quarters of England and Wales say, and are near-universal in the North and Midlands: 97%% in Lancashire, 95%% in Cheshire and Staffordshire, 93%% in Yorkshire. The South says <b>knock down ginger</b> instead (25%% nationally, but 63%% in London, 56%% in the East of England, 55%% in the South East), and the changeover is abrupt rather than gradual. The West Country breaks from the rest of the South with <b>knock knock ginger</b> (16%%). <b>Scotland has its own word entirely</b>: half of Scots say <b>chap door run</b> (27%%) or the clipped <b>chappie</b> (23%%), from Scots <i>chap</i> &lsquo;to knock&rsquo;, and 7%% say <b>chicken mellie</b>, which turns up nowhere else in the UK. <b>Wales</b> is the least united of all &mdash; no name passes 16%% &mdash; but <b>bobby knocking</b> and <b>rat a tat ginger</b> (11%% each) are found there and nowhere else. Two smaller English words complete it: <b>cherry knocking</b> in the Severn Vale around Gloucester and Cheltenham (95%%, though Bristol just to the south does not use it) with a second pocket around Northampton, and <b>knocking nine doors</b> on Tyneside and Wearside (56%% across the North East). <b>Ding dong ditch</b> is an American import that divides by age rather than place &mdash; 25%% of 18&ndash;29s against 2%% of over-70s &mdash; so it has no map. Two caveats: the three <i>run</i> names share one map because the only source with county-level detail records them as a single group, and Scotland&rsquo;s half-share is measured while the split of its remaining half is an estimate.",
-  alley:"<b>Words for an alleyway</b> &mdash; the narrow walkway between or behind houses, and one of the most finely divided words in Britain. <b>Alley</b> or <b>alleyway</b> is the national default and almost the only word used in the south. The north is where it fragments: <b>ginnel</b> across Lancashire, Greater Manchester and West Yorkshire; <b>snicket</b> in a tight pocket around Bradford and York; <b>gennel</b> around Sheffield; <b>jitty</b> through Derby, Nottingham and Leicester; <b>entry</b> on Merseyside and in the West Midlands; and <b>cut</b> in Newcastle. The sharpest divide of all is Bradford against Leeds &mdash; snicket and ginnel, about ten miles apart.",
-  tag:"<b>Names for tag/it</b> &mdash; <i>tig</i> covers most of England, Scotland &amp; Wales; <i>it</i> is the South East&rsquo;s word instead of <i>tig</i>. Distinct local pockets survive within that: <i>tiggy</i> and <i>tuggy</i> side by side around Durham &amp; North Yorkshire, <i>tick</i> and a tiny <i>tip</i> pocket in North Wales, <i>touch</i> around Birmingham and in the South West, <i>had</i> on the Suffolk/Essex coast, <i>hit</i> on the South Devon coast, and <i>dobby</i> &mdash; a well-known Nottinghamshire/South Yorkshire term &mdash; in a tight pocket around Sheffield."
+  sofa:"<b>Sofa, settee or couch</b> &mdash; <b>sofa</b> is the majority term nationally (58%%) and dominant across the South. <b>Settee</b> is the northern and Midlands word. <b>Couch</b> looks national but is really two places: Merseyside and west Lancashire, where it is overwhelming (76%% in Wigan), and Scotland at 41%%. Blackburn and Wigan, thirty miles apart, are near-exact opposites.",
+  gum:"<b>Words for chewing gum</b> &mdash; <b>chewing gum</b> is what four in five Britons say. Three local words survive inside that: <b>chewy</b> on Merseyside (78%% in Liverpool), <b>chuddy</b> along the Pennines from Manchester across to Leeds, and <b>chud</b>, which is Newcastle&rsquo;s alone. The three barely overlap, which is unusual even among lexical variants.",
+  prank:"<b>Words for knock-a-door-run</b> &mdash; one of the sharpest splits in Britain: four countries&rsquo; worth of words on one island. The <b>run</b> names (<i>knock a door run</i>, <i>knock and run</i>) cover the North and Midlands &mdash; 97%% in Lancashire. The South says <b>knock down ginger</b> (63%% in London). Scotland has its own word entirely: half of Scots say <b>chap door run</b> or the clipped <b>chappie</b>, from Scots <i>chap</i> &lsquo;to knock&rsquo;. Two smaller English words survive inside that: <b>cherry knocking</b> around Gloucester, and <b>knocking nine doors</b> on Tyneside.",
+  pants:"<b>Pants or trousers</b> &mdash; in most of Britain <i>pants</i> means underwear; across the North West it means both. 55%% in Lancashire and 39%% in Cheshire, falling to 14%% in Yorkshire and 2%% in Staffordshire. The cities are sharper still: <b>Liverpool 58%%</b> and <b>Manchester 50%%</b> against <b>Stoke 3%%</b>, thirty miles down the road.",
+  them:"<b>Demonstrative &lsquo;them&rsquo;</b> &mdash; <i>them animals</i> for <i>those animals</i>: the object pronoun used as a determiner. It has been in English since the Middle Ages rather than being a recent error. Acceptance runs north to south, highest in Yorkshire and Lancashire and lowest in the South &mdash; and lower still in Scotland, which has its own demonstratives (<i>thae</i>, <i>thon</i>).",
+  alley:"<b>Words for an alleyway</b> &mdash; one of the most finely divided words in Britain. <b>Alley</b> is the national default and almost the only word in the south. The north fragments: <b>ginnel</b> across Lancashire and West Yorkshire, <b>snicket</b> around Bradford, <b>gennel</b> around Sheffield, <b>jitty</b> through Derby and Nottingham, <b>entry</b> on Merseyside, <b>cut</b> in Newcastle. The sharpest divide is Bradford against Leeds, ten miles apart.",
+  tag:"<b>Names for tag/it</b> &mdash; <i>tig</i> covers most of England, Scotland &amp; Wales; <i>it</i> is the South East&rsquo;s word instead. Local pockets survive: <i>tiggy</i> and <i>tuggy</i> side by side around Durham, <i>tick</i> in North Wales, <i>touch</i> in South Wales, <i>had</i> on the Suffolk/Essex coast, and <i>dobby</i> in a tight pocket around Sheffield."
 };
 // only etymology sources are cited (the maps are our own recreations, not originals)
 // Shown as "Source: ..." at the foot of each info bubble. Deliberately left
@@ -1830,18 +1921,27 @@ const INFO_LINKS={
 // One consolidated credit list behind an (i) on the results screen. Names only:
 // pairing each source to a specific question implied the other fifteen were
 // unsourced, which is not what a partial list means.
+// Every source, with a link to the thing itself. A named citation with no way to
+// reach it is not much use to a reader who wants to check the map against it.
+const A=(t,u)=>"<a href='"+u+"' target='_blank' rel='noopener noreferrer'>"+t+"</a>";
 const SOURCES=[
-  "YouGov, August 2025 (n&asymp;38,000)",
-  "YouGov, February 2025 (n&gt;12,000)",
-  "BBC Voices, via Grieve et al. (2019)",
-  "Starkey Comics dialect surveys",
-  "MacKenzie, Bailey &amp; Turton (2022), <i>Journal of Linguistic Geography</i>",
-  "Tweetolectology Twitter survey (2020&ndash;21)",
-  "Survey of English Dialects (Orton et al., 1978)",
   "<i>Our Dialects</i> &mdash; L. MacKenzie, G. Bailey &amp; D. Turton, "+
-    "<a href='https://www.ourdialects.uk/maps/walkway/' target='_blank' rel='noopener noreferrer'>ourdialects.uk</a>, "+
-    "&copy; George Bailey, "+
-    "<a href='https://creativecommons.org/licenses/by-sa/4.0/' target='_blank' rel='noopener noreferrer'>CC BY-SA 4.0</a>"
+    A("ourdialects.uk","https://www.ourdialects.uk/maps/")+", &copy; George Bailey, "+
+    A("CC BY-SA 4.0","https://creativecommons.org/licenses/by-sa/4.0/"),
+  "MacKenzie, Bailey &amp; Turton (2022), &lsquo;Towards an updated dialect atlas of British English&rsquo;, "+
+    "<i>Journal of Linguistic Geography</i> &mdash; "+
+    A("full text (PDF)","https://www.laurelmackenzie.com/publication/2022-mackenzie-et-al/2022-mackenzie-et-al.pdf"),
+  "YouGov, August 2025 (n&asymp;38,000) &mdash; "+
+    A("what Britons call school canvas trainers","https://yougov.com/en-gb/articles/52768-plimsolls-pumps-or-something-else-what-do-britons-call-school-canvas-trainers"),
+  "YouGov, February 2025 (n&gt;12,000) &mdash; "+
+    A("&lsquo;knock down ginger&rsquo; or &lsquo;knock a door run&rsquo;?","https://yougov.com/en-gb/articles/51544-is-it-knock-down-ginger-or-knock-a-door-run"),
+  "Grieve, Montgomery, Nini, Murakami &amp; Guo (2019), &lsquo;Mapping Lexical Dialect Variation in "+
+    "British English Using Twitter&rsquo;, <i>Frontiers in Artificial Intelligence</i> &mdash; "+
+    A("open access","https://doi.org/10.3389/frai.2019.00011"),
+  "Tweetolectology Twitter survey (2020&ndash;21) &mdash; "+A("tweetolectology.com","https://tweetolectology.com/"),
+  "Starkey Comics dialect surveys &mdash; "+A("starkeycomics.com","https://starkeycomics.com/2023/11/07/map-of-british-english-dialects/"),
+  "Survey of English Dialects (Orton et al., 1978) &mdash; "+
+    A("about the survey","https://en.wikipedia.org/wiki/Survey_of_English_Dialects")
 ];
 // lexical prevalence: a relative band, no misleading headcount
 function band(v){return v>=0.5?"the main word(s) here":v>=0.3?"common here":v>=0.15?"one of several here":"rarely used here";}
@@ -2011,7 +2111,11 @@ function render(){
   // selection hides the map — you only ever see it by pressing "See map". ----
   if(q.slider){
     // 1-5 acceptability slider
-    hint.innerHTML=isRevealed?"":"Drag the slider, then press &ldquo;See map&rdquo;.";
+    // Once the map is up the hint line is free, so it says what to do next: the
+    // maps are per-answer, and nothing else on screen tells you that moving the
+    // slider redraws it.
+    hint.innerHTML=isRevealed?"&#8635; Move the slider to see a different map."
+                             :"Drag the slider, then press &ldquo;See map&rdquo;.";
     const v=(ans!==undefined)?ans:3;
     const wrap=document.createElement("div"); wrap.className="sliderbox";
     wrap.innerHTML="<input type='range' id='slider' min='1' max='5' step='1' value='"+v+"'>"+
@@ -2024,7 +2128,8 @@ function render(){
     sl.onchange=()=>{ answers[q.id]=+sl.value; revealedSet.delete(q.id); render(); };
   } else if(q.multi){
     const selected=new Set(Array.isArray(ans)?ans:[]);
-    hint.innerHTML=isRevealed?"":"Select all that apply";
+    hint.innerHTML=isRevealed?"&#8635; Select a different option to see its map."
+                             :"Select all that apply";
     q.opts.forEach(o=>{const bt=document.createElement("button");
       bt.className="opt"+(selected.has(o.v)?" sel":"");
       bt.innerHTML="<span class='box'>"+(selected.has(o.v)?"&#10003;":"")+"</span>"+o.label;
@@ -2037,7 +2142,7 @@ function render(){
         render(); };
       box.appendChild(bt);});
   } else {
-    hint.textContent="";
+    hint.innerHTML=isRevealed?"&#8635; Select a different option to see its map.":"";
     q.opts.forEach(o=>{const bt=document.createElement("button");
       bt.className="opt"+(ans===o.v?" sel":"");
       bt.innerHTML=o.label;
@@ -2422,7 +2527,7 @@ function drawMap(q,ans){
   // broad/widespread answers just describe the pattern (the map shows it).
   let matchHTML;
   if(noResult || !scored.length){
-    matchHTML="<span style='color:#8a857c;font-weight:500'>Inconclusive &mdash; this doesn&rsquo;t point to a particular place.</span>";
+    matchHTML="<span style='color:var(--ink);font-weight:600'>Inconclusive &mdash; this doesn&rsquo;t point to a particular place.</span>";
   } else if(starPlaces.length>=3 &&
             new Set(starPlaces.map(p=>regionGrid[p.row|0][p.col|0])).size===1 &&
             regionGrid[starPlaces[0].row|0][starPlaces[0].col|0]>=0){

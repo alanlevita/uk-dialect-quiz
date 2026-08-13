@@ -1,6 +1,6 @@
 # The Great British Dialect Quiz
 
-An interactive dialect atlas of Great Britain. Twenty-three questions about how
+An interactive dialect atlas of Great Britain. Twenty-five questions about how
 you speak, each answered with a map redrawn from published dialect research —
 and a final map placing your accent against twenty-three named places.
 
