@@ -1334,6 +1334,10 @@ html = """<!DOCTYPE html>
   html,body{margin:0;min-height:100%%;}
   body{background-color:var(--bg);background-image:var(--bgimg);background-attachment:fixed;
        color:var(--ink);transition:background-color .25s ease,color .25s ease;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,sans-serif;}
+  /* --apppad is the vertical padding #app adds; #intro subtracts it so the landing
+     page is exactly one viewport tall. Kept as a variable because the mobile rule
+     changes the padding, and two hardcoded numbers would drift apart. */
+  :root{--apppad:36px;}
   #app{max-width:1060px;margin:0 auto;padding:20px 20px 16px;position:relative;}
   #qimg{display:block;width:230px;height:230px;object-fit:cover;border-radius:16px;margin:48px auto 0;box-shadow:0 6px 18px rgba(0,0,0,.16);}
   .sliderbox{margin:20px 0 8px;}
@@ -1452,8 +1456,13 @@ html = """<!DOCTYPE html>
        line-height:1.35;white-space:nowrap;pointer-events:none;opacity:0;transform:translate(-50%%,-118%%);
        transition:opacity .1s;} .tip b{font-weight:600;} .tip small{opacity:.82;}
   /* landing page: two panels, vertically centred and filling the viewport */
+  /* The landing page is meant to be taken in at a glance, so it is locked to the
+     viewport and everything inside it is sized in vh as well as px: the clamps let
+     the map and the type shrink together on a short laptop instead of pushing the
+     Start button below the fold. dvh (not vh) so mobile browser chrome appearing
+     and disappearing doesn't cause a jump. */
   #intro{display:flex;flex-direction:column;align-items:center;justify-content:center;max-width:1180px;
-       margin:0 auto;min-height:calc(100vh - 40px);}
+       margin:0 auto;min-height:calc(100dvh - var(--apppad));}
   .intro-head{text-align:center;margin-bottom:14px;width:100%%;}
   .intro-panels{display:flex;gap:8vw;align-items:center;justify-content:center;flex-wrap:wrap;width:100%%;}
   .intro-left{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;text-align:center;}
@@ -1464,8 +1473,12 @@ html = """<!DOCTYPE html>
   #introcvwrap{position:relative;display:inline-block;}
   #introcvwrap::before{content:"";position:absolute;inset:-6%% -10%%;pointer-events:none;z-index:0;
        background:radial-gradient(ellipse at 50%% 52%%, rgba(64,54,44,.075), rgba(64,54,44,0) 68%%);}
-  #introcv{position:relative;z-index:1;display:block;margin:0 auto;width:290px;image-rendering:auto;
-       cursor:crosshair;max-width:100%%;height:auto;}
+  /* Sized by HEIGHT, not width. The map is 94x145, so a width rule makes it half
+     again as tall as it is wide and vertical space is the scarce axis -- setting
+     width:290px was silently asking for 447px of height. */
+  #introcv{position:relative;z-index:1;display:block;margin:0 auto;
+       height:min(52dvh,447px);width:auto;max-width:100%%;
+       image-rendering:auto;cursor:crosshair;}
   #introtip{position:absolute;pointer-events:none;opacity:0;transform:translate(-50%%,-135%%);white-space:nowrap;
        font-size:12px;font-weight:650;color:#fff;padding:4px 9px;border-radius:6px;transition:opacity .08s;z-index:5;
        box-shadow:0 3px 10px rgba(0,0,0,.18);}
@@ -1477,20 +1490,23 @@ html = """<!DOCTYPE html>
   .intro-hint{font-size:12px;color:var(--muted);margin:9px 0 0;letter-spacing:.01em;
        transition:opacity .3s ease;}
   .intro-hint.dim{opacity:.28;}
-  .intro-lead{font-size:21px;line-height:1.35;font-weight:700;letter-spacing:-.01em;margin:0 0 11px;}
+  .intro-lead{font-size:clamp(16px,2.3dvh,21px);line-height:1.3;font-weight:700;
+       letter-spacing:-.01em;margin:0 0 clamp(6px,1.2dvh,11px);}
   .intro-body{font-size:14px;line-height:1.5;color:var(--body);margin:0 0 11px;}
   /* three numbers instead of a paragraph of claims: the scale IS the argument,
      and it reads in a glance where prose has to be waded through */
-  .intro-stats{display:flex;gap:26px;margin:16px 0 14px;padding:12px 0;
+  .intro-stats{display:flex;gap:26px;margin:clamp(8px,1.6dvh,16px) 0 clamp(7px,1.4dvh,14px);
+       padding:clamp(6px,1.2dvh,12px) 0;
        border-top:1px solid var(--line);border-bottom:1px solid var(--line);}
   .intro-stats div{line-height:1.1;}
   .intro-stats b{display:block;font-size:20px;font-weight:750;color:var(--accent);
        letter-spacing:-.015em;margin-bottom:3px;}
   .intro-stats span{font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);}
-  .intro-why{font-size:13px;line-height:1.5;color:var(--body);margin:0 0 12px;}
-  .intro-points{list-style:none;margin:0 0 16px;padding:0;}
-  .intro-points li{position:relative;padding-left:15px;font-size:13px;line-height:1.45;
-       color:var(--body);margin-bottom:6px;}
+  .intro-why{font-size:clamp(11.5px,1.5dvh,13px);line-height:1.45;color:var(--body);
+       margin:0 0 clamp(7px,1.3dvh,12px);}
+  .intro-points{list-style:none;margin:0 0 clamp(9px,1.7dvh,16px);padding:0;}
+  .intro-points li{position:relative;padding-left:15px;font-size:clamp(11.5px,1.5dvh,13px);
+       line-height:1.4;color:var(--body);margin-bottom:clamp(3px,.7dvh,6px);}
   .intro-points li:last-child{margin-bottom:0;}
   .intro-points li::before{content:"";position:absolute;left:0;top:8px;width:5px;height:5px;
        border-radius:50%%;background:var(--accent);opacity:.55;}
@@ -1547,6 +1563,20 @@ html = """<!DOCTYPE html>
   /* ---- narrow screens / phones: stop anything running off the edge ---- */
   @media (max-width:640px){
     #app{padding:16px 14px 14px;}
+    :root{--apppad:30px;}
+    /* Stacked layout: the map and the copy are competing for one column, so the
+       map gives up most of the height and the prose paragraph drops -- the three
+       bullets below it say the same thing in less room. Touch devices can't hover
+       the map anyway, so it is decorative here rather than functional. */
+    #introcv{height:min(22dvh,300px);}
+    .intro-why{display:none;}
+    .intro-hint{display:none;}
+    /* the strapline wraps to two lines here and says what the lead says better */
+    .intro-sub{display:none;}
+    .intro-head{margin-bottom:8px;}
+    .intro-lead{font-size:16.5px;margin-bottom:8px;}
+    .intro-stats{margin:9px 0 9px;padding:8px 0;}
+    .intro-stats b{font-size:18px;}
     #left,#left.wide{flex:1 1 auto;max-width:100%%;width:100%%;}
     #left.wide #opts{display:block;}
     /* relocated by applyLayout(): image sits in the question column, buttons below the map */
@@ -1900,6 +1930,24 @@ const QUESTIONS=[
    info:"footstrut",infoLabel:"the foot&ndash;strut split",
    opts:[{label:"Yes, they rhyme",v:1,word:"rhyme"},{label:"No, they sound different",v:0,word:"split"}]}
 ];
+// Shuffle the dialect questions on every page load, keeping "where did you grow
+// up?" pinned at the front (the whole run is framed around answering that first,
+// and it is the one question that isn't scored).
+//
+// This is a research decision as much as a UX one: a fixed order means every
+// respondent meets the same question after the same warm-up, so any order effect
+// -- fatigue by question 20, or priming from the question before -- lands on the
+// same variable every time and looks exactly like a regional signal in the
+// collected data. Randomising spreads it across the whole set instead.
+//
+// Nothing downstream depends on position: answers are stored by question id, and
+// the scorer iterates the array rather than indexing into it.
+(function shuffleQuestions(){
+  for(let i=QUESTIONS.length-1;i>1;i--){
+    const j=1+Math.floor(Math.random()*i);       // never lands on index 0
+    const t=QUESTIONS[i]; QUESTIONS[i]=QUESTIONS[j]; QUESTIONS[j]=t;
+  }
+})();
 // foot-strut rate is still only an estimate -> don't fake precision at the extremes
 function fmtPct(p){if(p>=88)return "90%%+";if(p<=12)return "under 10%%";return "~"+(Math.round(p/5)*5)+"%%";}
 // etymologies / notes (sourced from Wiktionary), shown only when the user asks
