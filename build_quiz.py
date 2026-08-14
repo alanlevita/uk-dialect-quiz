@@ -18,6 +18,7 @@
 
 import json
 import base64
+import os
 import numpy as np
 from scipy import ndimage
 
@@ -993,6 +994,36 @@ grids_all["none_mother"] = negative_union(["mother_" + t for t in ["mum","mam","
 grids_all["none_tag"] = negative_union(["tag_" + t for t in TAG_TERMS])
 grids_all["none_skiveclass"] = negative_union(["skiveclass_" + t for t in ["bunk", "hookey", "skip", "skive", "wag"]])
 
+# ---- fold in what respondents have actually told us ---------------------------
+# retrain.py turns collected answers into empirical_maps.json: each surface is the
+# published prior shrunk toward what people from that county actually said, by
+# Beta-Binomial update with a pseudo-count (see retrain.py). This is the step that
+# makes "the maps improve as people play" true rather than aspirational -- without
+# it retrain.py writes a file nothing reads.
+#
+# Absent file = no change, which is the correct default: the quiz ships on the
+# published research until there is enough response data to move it.
+_emp_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "empirical_maps.json")
+if os.path.exists(_emp_path):
+    _emp = json.load(open(_emp_path))
+    _applied = []
+    for _k, _g in _emp.items():
+        if _k not in grids_all:
+            print("  ! empirical_maps.json has '%s', which is not a grid in this build "
+                  "-- skipped (question renamed or removed?)" % _k)
+            continue
+        # shape check: a stale file from an older grid would silently corrupt the map
+        if len(_g) != H or len(_g[0]) != W:
+            print("  ! '%s' is %dx%d, expected %dx%d -- skipped" %
+                  (_k, len(_g[0]), len(_g), W, H))
+            continue
+        grids_all[_k] = _g
+        _applied.append(_k)
+    print("empirical_maps.json: applied %d retrained surface(s): %s"
+          % (len(_applied), ", ".join(sorted(_applied)) or "none"))
+else:
+    print("empirical_maps.json: not present -- maps are the published research only")
+
 landj = [[bool(land[r][c]) for c in range(W)] for r in range(H)]
 
 CITY_LL = {"London", "Manchester", "Birmingham", "Leeds", "Liverpool", "Sheffield",
@@ -1560,19 +1591,20 @@ html = """<!DOCTYPE html>
       <p class="intro-lead">How you say a few everyday words &mdash; and what you call bread, or a splinter &mdash; quietly gives away where in Britain you&rsquo;re from.</p>
       <div class="intro-stats">
         <div><b>25</b><span>questions</span></div>
-        <div><b>8 km</b><span>resolution</span></div>
-        <div><b>1</b><span>result</span></div>
+        <div><b>8 km</b><span>map resolution</span></div>
+        <div><b>33</b><span>dialects mapped</span></div>
       </div>
       <p class="intro-why">Britain packs more dialect variation into one island than almost anywhere in the
         English-speaking world, and most of it sits in decades-old atlases. This one is live &mdash; and it
         gets redrawn by everyone who plays.</p>
       <ul class="intro-points">
         <li><b>Every map is live.</b> Hover over any city to see the word it actually uses &mdash;
-          scored across 4,025 points of Britain.</li>
-        <li><b>Nothing is invented.</b> Every map comes from published research.</li>
-        <li><b>It sharpens as you play.</b> With consent, your answers redraw the maps. Everything is
-          stored anonymously and used solely to study regional language variation and to improve
-          future versions of the quiz.</li>
+          and the whole country is mapped, not just the cities.</li>
+        <li><b>Nothing is invented.</b> Every map <i>starts</i> from published research or a
+          large-scale survey.</li>
+        <li><b>It sharpens as you play.</b> With consent, your answers are added to that data and
+          refine the maps over time. Everything is stored anonymously and used solely to study
+          regional language variation.</li>
       </ul>
       <label class="consent"><input type="checkbox" id="consent"><span>I agree to the <span class="tlink" id="termsbtn">terms of data collection<span class="terms-pop" id="termspop">By ticking this box, you consent to the collection and storage of your quiz answers and, if you provide it, your hometown. This information is stored <b>anonymously</b>: no name or email address is recorded, we do not store your IP address with your answers, and the record cannot be traced back to you. It is used solely to study regional language variation and to improve future versions of the quiz. Your data will not be sold or shared with third parties.</span></span></span></label>
       <button id="startbtn">Start the quiz &rarr;</button>
@@ -1661,12 +1693,19 @@ const QUESTIONS=[
      {label:"Ding dong ditch",v:"ditch",term:"ding dong ditch",none:true},
      {label:"I don&rsquo;t have a word for this",v:"none",term:"no word for this",grid:"none_prank",excl:true,none:true}
    ]},
-  {id:"pants",text:"&ldquo;Your &#95;&#95;&#95;&#95; are on backwards.&rdquo;",
+  // Only the two mapped answers are offered. BBC Voices records five words for this
+  // garment (alternation 28: trousers, pants, keks, jeans, trews; Grieve et al. 2019),
+  // but Our Dialects -- the only source that has actually MAPPED the variable -- forced
+  // a straight pants/trousers choice (n=6,291), and no published survey maps kecks or
+  // trews. Rather than list options the map cannot answer, the question offers the two
+  // it can and "Something else" catches everyone else. Kecks is covered in the (i).
+  {id:"pants",text:"What do you call the item of clothing with two legs, worn over your underwear?",
    tag:"real data (Our Dialects, n=6,291)",real:true,phon:false,metric:"prevalence",
    info:"pants",infoLabel:"pants vs trousers",
    opts:[
      {label:"Trousers",v:"trousers",term:"trousers",grid:"trousers"},
-     {label:"Pants",v:"pants",term:"pants",grid:"pants"}
+     {label:"Pants",v:"pants",term:"pants",grid:"pants"},
+     {label:"Something else",v:"none",term:"another word",none:true}
    ]},
   {id:"them",text:"How natural does &ldquo;<i>Look at them animals</i>&rdquo; sound to you (for <i>those animals</i>)?",
    tag:"real data (Our Dialects, n=2,659)",real:true,metric:"pct",
@@ -1684,7 +1723,7 @@ const QUESTIONS=[
    tag:"real data (Our Dialects, n=3,524)",real:true,phon:false,multi:true,metric:"prevalence",
    info:"gum",infoLabel:"words for chewing gum",
    opts:[
-     {label:"Chewing gum",v:"gum",term:"chewing gum",grid:"gum_gum"},
+     {label:"(Chewing) gum",v:"gum",term:"chewing gum",grid:"gum_gum"},
      {label:"Chewy",v:"chewy",term:"chewy",grid:"gum_chewy"},
      {label:"Chuddy",v:"chuddy",term:"chuddy",grid:"gum_chuddy"},
      {label:"Chud",v:"chud",term:"chud",grid:"gum_chud"},
@@ -1698,11 +1737,21 @@ const QUESTIONS=[
    // whether singer matches the g "that you use in finger" compares the two
    // words inside one speaker's own accent, which is the actual variable and
    // asserts nothing about anybody else.
-   text:"Does <i>singer</i> have the same hard <b>g</b> sound that <i>you</i> use in <i>finger</i>?",
+   // Three-way, not two. The old yes/no assumed everyone has a hard g in FINGER
+   // and only asked about SINGER -- so a speaker with no hard g in either word had
+   // to answer "yes, they're the same", which scored them as velar nasal plus, the
+   // exact opposite of what they say. The third option catches them. It has no map
+   // of its own: the source surface measures presence/absence of the g in SINGER
+   // only, so that pattern is recorded but not scored (none:true).
+   text:"Which sounds like you? (<i>singer</i> and <i>finger</i>)",
    tag:"real data",real:true,metric:"pct",grid:"singerfinger",
    info:"singerfinger",infoLabel:"velar nasal plus",
-   opts:[{label:"Yes &mdash; <i>sing-<b>g</b>er</i>, the same <b>g</b> as in <i>finger</i>",v:1,word:"pronounce the hard g"},
-         {label:"No &mdash; <i>sing-er</i>, unlike <i>finger</i>",v:0,word:"drop the hard g"}]},
+   opts:[{label:"A hard <b>g</b> in both &mdash; <i>sin-<b>g</b>er</i>, <i>fin-<b>g</b>er</i>",
+          v:1,word:"pronounce the hard g"},
+         {label:"A hard <b>g</b> in <i>finger</i> only &mdash; <i>sing-er</i>, <i>fin-<b>g</b>er</i>",
+          v:0,word:"drop the hard g"},
+         {label:"No hard <b>g</b> in either &mdash; <i>sing-er</i>, <i>fing-er</i>",
+          v:"neither",word:"use no hard g",none:true}]},
   {id:"alley",text:"What do you call the narrow walkway between or behind houses?",
    tag:"real data (Our Dialects, n=2,087)",real:true,phon:false,multi:true,metric:"prevalence",
    info:"alley",infoLabel:"words for an alleyway",
@@ -1874,7 +1923,7 @@ const ETYM={
   youse:"<b>Plural &lsquo;yous(e)&rsquo;</b> &mdash; a second-person plural pronoun, filling the gap English left when <i>thou/you</i> collapsed to just <i>you</i>. Strongest in <b>Scotland</b> and the <b>North East</b>, fading through the Midlands, and rare in southern England.",
   mother:"<b>Words for &lsquo;mother&rsquo;</b> &mdash; <b>mum</b> is general across England and Scotland. <b>Mam</b> is the Welsh, North East and Cumbrian word. <b>Mom</b> is almost entirely <b>West Midlands</b>, centred on Birmingham &mdash; not an Americanism there but long-standing local usage. <b>Maw</b> is a Scots clipping, <b>mummy</b> survives in adults mainly in the South East, and <b>mammy</b> has a real foothold in south-west Wales.",
   shoes:"<b>Names for PE plimsolls</b> &mdash; the canvas shoes worn for primary-school PE, and one of the most sharply regional words in Britain. <b>Plimsolls</b> is the southern and eastern norm (91%% in Norfolk) but flips to <b>pumps</b> across the North West and West Midlands. <b>Daps</b> clusters either side of the Severn Estuary. Scotland splits several ways: <b>sandshoes</b> around the Clyde, <b>gutties</b> in Lanarkshire, <b>rubbers</b> almost only in the Lothians.",
-  singerfinger:"<b>Velar nasal plus</b> &mdash; whether a hard [&#609;] survives after the <i>ng</i>, so <i>singer</i> rhymes with <i>finger</i>. English generally dropped it around the 17th century, but the change never took hold across the <b>North West</b> and <b>West Midlands</b>: Manchester, Liverpool, Stoke, Birmingham and north-east Wales keep it. Elsewhere the two words are distinct.",
+  singerfinger:"<b>Velar nasal plus</b> &mdash; whether a hard [&#609;] survives after the <i>ng</i>. There are three patterns. Most of England and Wales keeps the [&#609;] in <i>finger</i> but not <i>singer</i>, where the <i>-er</i> is a suffix on <i>sing</i>. Across the <b>North West</b> and <b>West Midlands</b> &mdash; Manchester, Liverpool, Stoke, Birmingham and north-east Wales &mdash; the [&#609;] survives in both, so <i>singer</i> rhymes with <i>finger</i>; English generally dropped it around the 17th century, but the change never took hold there. A third pattern has no hard [&#609;] in either word. The map shows only the first two, which is what the source survey measured.",
   thfronting:"<b>TH-fronting</b> &mdash; replacing /&#952;/ and /&#240;/ with /f/ and /v/, so <i>think</i> &rarr; <i>fink</i> and <i>brother</i> &rarr; <i>bruvver</i>. Once a London feature, it has spread rapidly since the late 20th century across urban England, especially among younger speakers, while staying rare in Scotland and Wales.",
   skiveclass:"<b>Words for skipping school</b> without permission. <b>Skive</b> is the general British term, strongest in Scotland and the South West; <b>bunk off</b> is a London/South East form; <b>wag</b> belongs to the North West and North East; <b>play hookey</b> is chiefly Tyneside.",
   trapbath:"<b>The trap&ndash;bath split</b> &mdash; in the 18th century southern English lengthened the <i>a</i> in a set of words (<i>bath, grass, last, dance</i>) to /&#593;&#720;/, splitting them from TRAP words (<i>cat, trap</i>). The North, Wales and Scotland kept the short /a/ &mdash; so a northerner says [ba&#952;], a southerner [b&#593;&#720;&#952;]. It&rsquo;s one of the sharpest north&ndash;south markers.",
@@ -1885,7 +1934,7 @@ const ETYM={
   sofa:"<b>Sofa, settee or couch</b> &mdash; <b>sofa</b> is the majority term nationally (58%%) and dominant across the South. <b>Settee</b> is the northern and Midlands word. <b>Couch</b> looks national but is really two places: Merseyside and west Lancashire, where it is overwhelming (76%% in Wigan), and Scotland at 41%%. Blackburn and Wigan, thirty miles apart, are near-exact opposites.",
   gum:"<b>Words for chewing gum</b> &mdash; <b>chewing gum</b> is what four in five Britons say. Three local words survive inside that: <b>chewy</b> on Merseyside (78%% in Liverpool), <b>chuddy</b> along the Pennines from Manchester across to Leeds, and <b>chud</b>, which is Newcastle&rsquo;s alone. The three barely overlap, which is unusual even among lexical variants.",
   prank:"<b>Words for knock-a-door-run</b> &mdash; one of the sharpest splits in Britain: four countries&rsquo; worth of words on one island. The <b>run</b> names (<i>knock a door run</i>, <i>knock and run</i>) cover the North and Midlands &mdash; 97%% in Lancashire. The South says <b>knock down ginger</b> (63%% in London). Scotland has its own word entirely: half of Scots say <b>chap door run</b> or the clipped <b>chappie</b>, from Scots <i>chap</i> &lsquo;to knock&rsquo;. Two smaller English words survive inside that: <b>cherry knocking</b> around Gloucester, and <b>knocking nine doors</b> on Tyneside.",
-  pants:"<b>Pants or trousers</b> &mdash; in most of Britain <i>pants</i> means underwear; across the North West it means both. 55%% in Lancashire and 39%% in Cheshire, falling to 14%% in Yorkshire and 2%% in Staffordshire. The cities are sharper still: <b>Liverpool 58%%</b> and <b>Manchester 50%%</b> against <b>Stoke 3%%</b>, thirty miles down the road.",
+  pants:"<b>Pants or trousers</b> &mdash; in most of Britain <i>pants</i> means underwear; across the North West it means both. 55%% in Lancashire and 39%% in Cheshire, falling to 14%% in Yorkshire and 2%% in Staffordshire. The cities are sharper still: <b>Liverpool 58%%</b> and <b>Manchester 50%%</b> against <b>Stoke 3%%</b>, thirty miles down the road. Britain has other words for the garment &mdash; <b>kecks</b> in the North West, <b>trews</b> in Scotland &mdash; but only the pants/trousers split has ever been mapped, so only it is offered here.",
   them:"<b>Demonstrative &lsquo;them&rsquo;</b> &mdash; <i>them animals</i> for <i>those animals</i>: the object pronoun used as a determiner. It has been in English since the Middle Ages rather than being a recent error. Acceptance runs north to south, highest in Yorkshire and Lancashire and lowest in the South &mdash; and lower still in Scotland, which has its own demonstratives (<i>thae</i>, <i>thon</i>).",
   alley:"<b>Words for an alleyway</b> &mdash; one of the most finely divided words in Britain. <b>Alley</b> is the national default and almost the only word in the south. The north fragments: <b>ginnel</b> across Lancashire and West Yorkshire, <b>snicket</b> around Bradford, <b>gennel</b> around Sheffield, <b>jitty</b> through Derby and Nottingham, <b>entry</b> on Merseyside, <b>cut</b> in Newcastle. The sharpest divide is Bradford against Leeds, ten miles apart.",
   tag:"<b>Names for tag/it</b> &mdash; <i>tig</i> covers most of England, Scotland &amp; Wales; <i>it</i> is the South East&rsquo;s word instead. Local pockets survive: <i>tiggy</i> and <i>tuggy</i> side by side around Durham, <i>tick</i> in North Wales, <i>touch</i> in South Wales, <i>had</i> on the Suffolk/Essex coast, and <i>dobby</i> in a tight pocket around Sheffield."
@@ -2183,7 +2232,12 @@ const THEME={grid:"#c9c9d2", nullCell:[214,214,220], nullDot:[200,200,205], dotS
       // old pair of constants kept only 16%% of each colour channel under a flat
       // +112 lift, which is why every region came out near-grey and the map read
       // as a pale wash instead of a coloured atlas.
-      desat:0.18, wash:0.34, page:[246,241,231], veil:0.58};
+      // Two veils, because the map has two jobs and they want opposite things.
+      // While the tour runs, the point is "look at THIS region", so the rest is
+      // pushed back hard. The moment you hover, the point is "explore the atlas",
+      // so the colour comes back. One value could only ever satisfy one of them --
+      // washed-out when set for the spotlight, spotlight-less when set for colour.
+      desat:0.06, wash:0.22, page:[246,241,231], veil:0.30, veilTour:0.62};
 const rgbOf=a=>"rgb("+a[0]+","+a[1]+","+a[2]+")";
 // Gutter strength. A cell can only ever be a whole number of device pixels, so
 // at small sizes the thinnest drawable gutter (1px) is proportionally far too
@@ -2209,11 +2263,15 @@ const MINPOP=70, WASHCAP=0.62;
 function vividTint(col){
   const g=col[0]*0.3+col[1]*0.5+col[2]*0.2;
   let out=col.map(t=>Math.round(Math.max(0,Math.min(255,g+(t-g)*1.45))));
-  // Hard luminance ceiling. The veiled surround sits around 210-230, so a
-  // spotlight has to be decisively darker than that or it vanishes into it --
-  // at a ceiling of 170 the pale Mancunian pink still collided with veiled Wales.
+  // Hard luminance ceiling. The spotlight has to be decisively darker than the
+  // veiled surround or it vanishes into it -- at 170 the pale Mancunian pink still
+  // collided with veiled Wales. Lowered 140 -> 95 when the base tints were
+  // brightened: a more colourful surround means colour alone no longer separates
+  // the two (both are coloured now), so the whole job falls to luminance. At 140
+  // the worst region, South-East Midlands, was only 59 apart; at 95 the worst is
+  // 83, better than the 74 the darker palette managed.
   const lum=out[0]*0.3+out[1]*0.5+out[2]*0.2;
-  if(lum>140){const k=140/lum; out=out.map(t=>Math.round(t*k));}
+  if(lum>95){const k=95/lum; out=out.map(t=>Math.round(t*k));}
   return out;
 }
 function baseTint(col){
@@ -2435,7 +2493,7 @@ function drawMap(q,ans){
     if(opt.grid){
       const base=grids[opt.grid];
       for(let r=0;r<H_;r++){surf.push([]);for(let c=0;c<W;c++){surf[r].push(base[r][c]);}}
-    } else if(grids[q.id]){   // binary pct question: flip for the "no" option
+    } else if(!opt.none && grids[q.id]){   // binary pct question: flip for the "no" option
       const base=grids[q.id];
       for(let r=0;r<H_;r++){surf.push([]);for(let c=0;c<W;c++){
         surf[r].push(base[r][c]==null?null:(ans?base[r][c]:1-base[r][c]));}}
@@ -2576,6 +2634,9 @@ function answerSurface(q,ans){
   if(ans===undefined)return null;
   const opt=q.opts?q.opts.find(o=>o.v===ans):null;
   if(opt&&opt.grid){ const base=grids[opt.grid]; if(!base)return null; const s=[];for(let r=0;r<H_;r++){s.push([]);for(let c=0;c<W;c++)s[r].push(base[r]?base[r][c]:null);} return s; }
+  // A "none" option on a binary pct question has no surface of its own, and must
+  // NOT fall through to the flip below -- any truthy value would score as "yes".
+  if(opt&&opt.none) return null;
   if(grids[q.id]){ const base=grids[q.id]; const s=[];for(let r=0;r<H_;r++){s.push([]);for(let c=0;c<W;c++){const b=base[r]?base[r][c]:null; s[r].push(b==null?null:(ans?b:1-b));}} return s; }
   return null;
 }
@@ -2844,6 +2905,7 @@ function drawMini(){
   // cursor: the canvas box includes sea, and deriving it from the region lookup
   // made the tour start advancing again whenever the pointer crossed open water.
   let cur=tour.length?tour[0]:-1, prev=-1, fadeStart=-1e9, nextAt=0, inside=false, started=0;
+  let veilNow=THEME.veilTour;      // eases toward THEME.veil while the pointer is on the map
 
   function setLabel(di){
     if(di<0){ cap.textContent="\\u2014"; cap.style.color=""; cap.style.backgroundColor=""; return; }
@@ -2873,7 +2935,9 @@ function drawMini(){
     // source-atop keeps the veil on the land -- a plain fillRect would tint the
     // transparent sea and leave a visible rectangle around the island.
     bx.globalCompositeOperation="source-atop";
-    bx.fillStyle="rgba("+THEME.page[0]+","+THEME.page[1]+","+THEME.page[2]+","+THEME.veil+")";
+    // eased so the map doesn't snap between the two states as the pointer arrives
+    veilNow += ((inside?THEME.veil:THEME.veilTour)-veilNow)*0.12;
+    bx.fillStyle="rgba("+THEME.page[0]+","+THEME.page[1]+","+THEME.page[2]+","+veilNow+")";
     bx.fillRect(0,0,PW,PH);
     bx.globalCompositeOperation="source-over";
     if(a<1&&prev>=0&&layers[prev]){bx.globalAlpha=1-a;const L=layers[prev];bx.drawImage(L.cv,L.x,L.y);}

@@ -112,20 +112,39 @@ def update_surface(prior, counts_yes, counts_n, cg, land, alpha=ALPHA_DEFAULT,
 
 
 def tally(responses, key, positive):
-    """Count yes/total per county for one surface."""
+    """Count yes/total per county for one surface.
+
+    Only "1"/"0" rows count toward the denominator. Question 6 now has a third
+    answer ("neither"), which is neither a yes nor a no for this surface -- adding
+    it to `tot` alone would count it as a no and bias the map downward.
+    """
     yes, tot = {}, {}
     for ci, answers in responses:
         if key not in answers:
             continue
+        v = str(answers[key]).strip()
+        if v not in ("0", "1"):
+            continue
         tot[ci] = tot.get(ci, 0) + 1
-        if positive(answers[key]):
+        if positive(v):
             yes[ci] = yes.get(ci, 0) + 1
     return yes, tot
 
 
 # ------------------------------------------------------------------ real data
+# Only questions whose stored answer is literally "1" or "0" belong here, because
+# the tally below counts a row as positive iff the value == "1".
+#
+# "tvd" used to be a yes/no and is NOT any more -- it stores "tea"/"dinner"/"supper".
+# Left in this list it tallied zero positives out of every response and dragged the
+# surface toward 0 everywhere. Removed.
+#
+# The other 14 questions are lexical multi-selects (their answers are word lists,
+# scored against one surface per word) or 1-5 sliders. Retraining those needs a
+# different update per answer shape, which is not written yet -- so they keep the
+# published maps, and that limit is worth stating rather than glossing.
 BINARY_QUESTIONS = ["footstrut", "singerfinger", "youse", "thfronting", "scone",
-                    "tvd", "trapbath", "bookspook", "stirstare", "northforce",
+                    "trapbath", "bookspook", "stirstare", "northforce",
                     "forcecure"]
 
 
